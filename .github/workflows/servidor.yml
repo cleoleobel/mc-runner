@@ -31,7 +31,17 @@ permissions:
   contents: write
 
 env:
-  BDS_VERSION: "1.26.36.1"
+  # 1.26.33.2 A PROPOSITO, no la ultima.
+  # Con el servidor en 1.26.36 y el cliente en 1.26.33, el cliente era
+  # rechazado en el saludo inicial con un mensaje que despista mucho, "You are
+  # not whitelisted on this server!", aun con allow-list=false confirmado en el
+  # servidor. La pista buena fue que el servidor NO anotaba el intento en su
+  # registro: el corte ocurria antes de considerarlo siquiera una conexion.
+  # Se fija a la version del cliente. De la serie 1.26.33 se elige la .2, que es
+  # la ultima y por tanto la mas asentada; la .1 tambien existe.
+  # Si algun dia hay que actualizar, hay que subir esto Y que los jugadores
+  # actualicen su Minecraft: las dos cosas tienen que ir a la par.
+  BDS_VERSION: "1.26.33.2"
   REPO_PACKS: ${{ vars.REPO_PACKS }}     # ej: villasori466-hub/server-minecraft-bedrock
   MUNDO: CronicaDelCataclismo
   # Direccion fija del tunel de portmap.io. Corresponde a la regla
@@ -196,11 +206,38 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          REPO="${{ github.repository }}"
           mkdir -p "server/worlds/${MUNDO}"
-          if gh release download mundo --repo "${{ github.repository }}" --pattern world.zip --dir . 2>/dev/null; then
-            unzip -q world.zip -d "server/worlds/${MUNDO}"
-            rm world.zip
-            echo "Mundo restaurado ($(du -sh server/worlds/${MUNDO} | cut -f1))"
+
+          # UN MUNDO DE OTRA VERSION NO SE RESTAURA A CIEGAS.
+          # Bedrock no garantiza abrir un mundo creado por una version mas nueva:
+          # puede negarse a cargarlo o corromperlo. Junto al mundo se guarda la
+          # version del servidor que lo escribio; si no coincide con la actual,
+          # ese mundo se APARTA a la release 'mundo-anterior' (no se borra jamas)
+          # y se empieza uno nuevo.
+          # Un mundo sin marca de version se considera de otra version: es el
+          # caso de la primera sesion tras bajar de 1.26.36 a 1.26.33.
+          ver_guardada=""
+          if gh release download mundo --repo "$REPO" --pattern bds-version.txt --dir /tmp 2>/dev/null; then
+            ver_guardada=$(tr -d '[:space:]' < /tmp/bds-version.txt)
+          fi
+
+          if gh release download mundo --repo "$REPO" --pattern world.zip --dir . 2>/dev/null; then
+            if [ "$ver_guardada" = "$BDS_VERSION" ]; then
+              unzip -q world.zip -d "server/worlds/${MUNDO}"
+              rm world.zip
+              echo "Mundo restaurado ($(du -sh server/worlds/${MUNDO} | cut -f1))"
+            else
+              echo "::warning::El mundo guardado es de la version '${ver_guardada:-desconocida}' y ahora se usa ${BDS_VERSION}. Se aparta y se empieza uno nuevo."
+              gh release view mundo-anterior --repo "$REPO" >/dev/null 2>&1 \
+                || gh release create mundo-anterior --repo "$REPO" \
+                     --title "Mundo de una version anterior" \
+                     --notes "Mundo apartado al cambiar de version del servidor. No se borra: si se vuelve a esa version, se puede recuperar desde aqui."
+              mv world.zip "world-${ver_guardada:-desconocida}.zip"
+              gh release upload mundo-anterior "world-${ver_guardada:-desconocida}.zip" --repo "$REPO" --clobber
+              rm -f "world-${ver_guardada:-desconocida}.zip"
+              echo "Mundo anterior a salvo en la release 'mundo-anterior'. Se genera uno nuevo."
+            fi
           else
             echo "No hay mundo guardado todavia: se creara uno nuevo"
           fi
@@ -555,7 +592,13 @@ jobs:
             || gh release create mundo --repo "${{ github.repository }}" \
                  --title "Mundo guardado" --notes "Ultima partida guardada automaticamente."
           gh release upload mundo /tmp/world.zip --repo "${{ github.repository }}" --clobber
-          echo "Mundo subido a la release 'mundo'"
+
+          # La version que escribio este mundo viaja CON el mundo. Es lo que
+          # permite detectar en el arranque siguiente que se ha cambiado de
+          # version y no abrirlo con una incompatible.
+          printf '%s\n' "$BDS_VERSION" > /tmp/bds-version.txt
+          gh release upload mundo /tmp/bds-version.txt --repo "${{ github.repository }}" --clobber
+          echo "Mundo subido a la release 'mundo' (version $BDS_VERSION)"
 
       # Solo se encadena si el servidor LLEGO A ARRANCAR. Antes se relanzaba
       # pase lo que pase, asi que un secreto mal puesto generaba un bucle de
