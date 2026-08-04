@@ -196,26 +196,67 @@ jobs:
           curl -fsSL -o playit \
             "https://github.com/playit-cloud/playit-agent/releases/latest/download/playit-linux-amd64"
           chmod +x playit
-          mkdir -p /tmp/playit
 
-          # FORMA DOCUMENTADA (README oficial del agente): el secreto va en la
-          # variable de entorno SECRET_KEY, no en un flag. Su ejemplo de Docker es
-          #   docker run ... -e SECRET_KEY=<secret> ghcr.io/playit-cloud/playit-agent
-          # Con --secret a secas el daemon arranca con secret_path=None, intenta
-          # abrir un socket IPC para un frontend inexistente y muere con
-          # "IPC error: Failed to bind to socket".
-          # EXACTAMENTE como el ejemplo oficial: solo la variable de entorno.
-          # Nada de --socket-path: esa opcion es para el IPC con la interfaz
-          # grafica y puede dejar al agente esperando un frontend en vez de
-          # servir el tunel.
-          SECRET_KEY="$PLAYIT_SECRET" nohup ./playit > playit.log 2>&1 &
+          # POR QUE FALLABA ANTES. Causa confirmada leyendo el codigo del agente,
+          # no adivinando: 'playit-linux-amd64' ES el daemon 'playitd', y al
+          # arrancar abre SIEMPRE un socket IPC. En Linux la ruta por defecto
+          # esta fijada a pelo en el codigo:
+          #     /run/playit/playitd.sock
+          # Antes de abrirlo hace create_dir_all del directorio padre, pero
+          # DESCARTANDO el error ("let _ = std::fs::create_dir_all(parent)").
+          # Aqui el usuario es 'runner', no root, y no puede crear nada dentro
+          # de /run: la creacion falla en silencio, el directorio sigue sin
+          # existir y el bind muere con el error que veiamos en el diagnostico:
+          #     IPC error: Failed to bind to socket: No such file or directory (os error 2)
+          # En la imagen oficial de Docker no pasa porque dentro se es root.
+          # Basta con crear el directorio con sudo y cederselo al usuario.
+          sudo mkdir -p /run/playit
+          sudo chown "$(id -u):$(id -g)" /run/playit
+
+          # Y el secreto va en --secret, NO en SECRET_KEY. Esa variable la lee el
+          # entrypoint.sh de la imagen de Docker, que la traduce a --secret; el
+          # binario a pelo ni la mira. Por eso en el ultimo intento arrancaba con
+          # secret_path apuntando al fichero por defecto, que no existe.
+          nohup ./playit --secret "$PLAYIT_SECRET" > playit.log 2>&1 &
           PLAYIT_PID=$!
-          sleep 15
+          sleep 10
 
-          # Esperar a que el agente negocie el tunel
+          # PLAN B: el contenedor oficial, que es la via documentada y dentro
+          # corre como root. Cada prueba cuesta una ejecucion entera del
+          # workflow, asi que se intentan las dos vias en la misma pasada.
+          MODO=binario
+          if ! kill -0 $PLAYIT_PID 2>/dev/null; then
+            echo "::warning::El binario no aguanto; reintentando con el contenedor oficial."
+            echo "----- por que fallo el binario -----"
+            cat playit.log
+            docker rm -f playit >/dev/null 2>&1 || true
+            docker run -d --name playit --network host \
+              -e SECRET_KEY="$PLAYIT_SECRET" \
+              ghcr.io/playit-cloud/playit-agent:latest
+            # Se ANADE al mismo fichero (no se pisa) para no perder el motivo del
+            # primer fallo: el resto del workflow y el diagnostico leen de aqui.
+            nohup docker logs -f playit >> playit.log 2>&1 &
+            MODO=docker
+            sleep 10
+          fi
+          echo "Agente arrancado en modo: $MODO"
+
+          # "Sigue vivo?" segun el modo en el que acabara arrancando
+          vivo() {
+            if [ "$MODO" = docker ]; then
+              [ "$(docker inspect -f '{{.State.Running}}' playit 2>/dev/null)" = "true" ]
+            else
+              kill -0 $PLAYIT_PID 2>/dev/null
+            fi
+          }
+
+          # Esperar a que el agente negocie el tunel.
+          # El grep va dentro de un 'if': con 'grep -q ... && break' a secas, la
+          # primera vuelta sin coincidencia devuelve 1, y con 'set -e' eso mataba
+          # el paso antes de llegar a imprimir el log de diagnostico.
           for i in $(seq 1 12); do
             sleep 5
-            grep -qiE 'joinmc\.link|ply\.gg|playit\.gg|tunnel' playit.log && break
+            if grep -qiE 'joinmc\.link|ply\.gg|playit\.gg|tunnel' playit.log; then break; fi
           done
 
           echo "--- log de playit ---"
@@ -223,8 +264,8 @@ jobs:
 
           # Comprobar que el agente sigue vivo: si murio, nadie podra conectarse
           # aunque el servidor arranque perfectamente.
-          if ! kill -0 $PLAYIT_PID 2>/dev/null; then
-            echo "::error::El agente de playit se cerro. Sin tunel no hay servidor accesible."
+          if ! vivo; then
+            echo "::error::El agente de playit se cerro por las dos vias. Sin tunel no hay servidor accesible."
             cat playit.log
             exit 1
           fi
@@ -380,6 +421,13 @@ jobs:
             echo
             echo "--- agente playit ---"
             if [ -f playit.log ]; then tail -40 playit.log; else echo "NO existe playit.log"; fi
+            echo
+            echo "--- directorio del socket IPC (/run/playit) ---"
+            ls -la /run/playit 2>&1 || echo "NO existe: el bind del socket volveria a fallar"
+            echo
+            echo "--- contenedor de playit (solo si se uso el plan B) ---"
+            docker ps -a --filter name=playit --format '{{.Names}} {{.Status}}' 2>/dev/null || echo "(docker no disponible)"
+            docker logs --tail 30 playit 2>&1 || true
             echo
             echo "--- puertos UDP escuchando ---"
             ss -ulnp 2>/dev/null || echo "(ss no disponible)"
