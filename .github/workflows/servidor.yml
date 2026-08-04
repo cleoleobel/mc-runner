@@ -429,23 +429,45 @@ jobs:
             const d=require("dgram"), s=d.createSocket("udp4");
             s.on("message",(m,r)=>s.send(m,r.port,r.address));
             s.bind(19132);
-            setTimeout(()=>process.exit(0), 60000);
+            setTimeout(()=>process.exit(0), 180000);
           ' > /tmp/eco.log 2>&1 &
           ECO=$!
           sleep 2
 
-          echo "--- probando ${PLAYIT_HOST}:${PLAYIT_PUERTO} de ida y vuelta ---"
-          node -e '
-            const d=require("dgram"), s=d.createSocket("udp4");
-            const host=process.argv[1], puerto=parseInt(process.argv[2],10);
-            s.on("message",()=>{ console.log("VUELVE: el tunel reenvia"); process.exit(0); });
-            const i=setInterval(()=>s.send(Buffer.from("prueba"),puerto,host),1000);
-            setTimeout(()=>{ clearInterval(i); console.log("NO VUELVE: no reenvia"); process.exit(1); },35000);
-          ' "$PLAYIT_HOST" "$PLAYIT_PUERTO"
-          VALE=$?
+          # EN RONDAS, no en un solo intento largo. En la ejecucion 28 el agente
+          # arranco bien y aun asi el sondeo agoto sus 35 s. Un tunel recien
+          # creado (o al que le acaban de cambiar la region) puede tardar en
+          # quedar servido, asi que se le dan tres oportunidades separadas en
+          # vez de una ventana seguida: si tarda, se le espera; si no va a ir,
+          # se sabe igual.
+          VALE=1
+          for ronda in 1 2 3; do
+            echo "--- ronda $ronda: probando ${PLAYIT_HOST}:${PLAYIT_PUERTO} de ida y vuelta ---"
+            if node -e '
+              const d=require("dgram"), s=d.createSocket("udp4");
+              const host=process.argv[1], puerto=parseInt(process.argv[2],10);
+              s.on("message",()=>{ process.exit(0); });
+              const i=setInterval(()=>s.send(Buffer.from("prueba"),puerto,host),1000);
+              setTimeout(()=>{ clearInterval(i); process.exit(1); },25000);
+            ' "$PLAYIT_HOST" "$PLAYIT_PUERTO"; then
+              echo "VUELVE: el tunel reenvia"
+              VALE=0
+              break
+            fi
+            echo "sin respuesta en esta ronda"
+            sleep 10
+          done
 
           kill "$ECO" 2>/dev/null
           wait "$ECO" 2>/dev/null
+
+          # EL LOG DEL AGENTE, FILTRADO Y PUBLICO. Esta es la pieza que ha
+          # faltado en los dos intentos anteriores: sin ella, saber por que
+          # falla exige los logs del job, que desde fuera dan 403, y solo queda
+          # suponer. Se filtra cualquier cadena larga de letras y numeros por si
+          # el agente imprimiera el secreto: esto acaba siendo publico.
+          tail -40 /tmp/playit.log 2>/dev/null \
+            | sed -E 's/[A-Za-z0-9_-]{24,}/[FILTRADO]/g' > /tmp/playit_publico.txt
 
           # La direccion se deja en ficheros para que el publicador de mas abajo
           # (otro paso) pueda reintentar la prueba contra el servidor real.
@@ -727,6 +749,11 @@ jobs:
                   else
                     echo "prueba REAL contra el servidor: no reenvia"
                   fi
+                  echo
+                  echo "--- log del agente de playit (filtrado) ---"
+                  tail -40 /tmp/playit.log 2>/dev/null \
+                    | sed -E 's/[A-Za-z0-9_-]{24,}/[FILTRADO]/g' \
+                    | tail -25 || echo "(sin log)"
                 else
                   echo "no configurada en esta sesion"
                 fi
