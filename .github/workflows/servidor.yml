@@ -351,8 +351,8 @@ jobs:
       #
       # QUE HACE FALTA (si falta algo, no se intenta y no pasa nada):
       #   variable ZT_RED     el ID de 16 digitos de la red
-      #   variable ZT_IP      la IP fija que tendra el servidor, ej 10.147.20.10
       #   secreto  ZT_TOKEN   token de la API de ZeroTier Central
+      #   variable ZT_IP      OPCIONAL. Si no se pone, se calcula sola.
       #
       # EL TOKEN NO ES UN CAPRICHO. Cada sesion arranca en una maquina nueva,
       # que para ZeroTier es un dispositivo desconocido y entra sin autorizar.
@@ -370,9 +370,38 @@ jobs:
           set +e
           echo "ok=no" >> "$GITHUB_OUTPUT"
 
-          if [ -z "${ZT_RED:-}" ] || [ -z "${ZT_IP:-}" ] || [ -z "${ZT_TOKEN:-}" ]; then
+          if [ -z "${ZT_RED:-}" ] || [ -z "${ZT_TOKEN:-}" ]; then
             echo "Red directa no configurada. Se juega por el tunel de portmap, como siempre."
             exit 0
+          fi
+
+          # ZT_IP es OPCIONAL. Si no se pone, se calcula sola preguntandole a la
+          # API por el rango de la red y cogiendo el .200. Asi hay una variable
+          # menos que configurar y, sobre todo, una menos que equivocar: poner a
+          # mano una IP fuera del rango de la red es un fallo silencioso que solo
+          # se nota cuando nadie puede entrar.
+          # Se elige el .200 porque ZeroTier reparte desde abajo: es el rincon
+          # donde menos probable es chocar con el movil de alguien.
+          if [ -z "${ZT_IP:-}" ]; then
+            ZT_IP=$(curl -s -H "Authorization: token ${ZT_TOKEN}" \
+              "https://api.zerotier.com/api/v1/network/${ZT_RED}" \
+              | node -e '
+                let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+                  try{
+                    const j=JSON.parse(d);
+                    const r=(j.config&&j.config.routes&&j.config.routes[0]&&j.config.routes[0].target)||"";
+                    const base=r.split("/")[0];
+                    if(!base){ process.exit(1); }
+                    console.log(base.split(".").slice(0,3).join(".")+".200");
+                  }catch(e){ process.exit(1); }
+                });')
+            if [ -z "$ZT_IP" ]; then
+              echo "::warning::No se ha podido leer el rango de la red $ZT_RED. Comprueba el ZT_TOKEN. Se sigue solo con portmap."
+              exit 0
+            fi
+            echo "IP calculada a partir del rango de la red: $ZT_IP"
+          else
+            echo "IP fijada a mano en la variable ZT_IP: $ZT_IP"
           fi
 
           echo "--- instalando ZeroTier ---"
