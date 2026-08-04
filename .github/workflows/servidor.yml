@@ -704,8 +704,14 @@ jobs:
                   ZTIP=$(cat /tmp/zt_ip.txt)
                   echo "direccion directa: ${ZTIP}:19132"
                   cat /tmp/zt_estado.txt 2>/dev/null
-                  echo "miembros que ve este nodo:"
-                  sudo zerotier-cli listnetworks 2>/dev/null | tail -3 || echo "(zerotier-cli no responde)"
+                  echo "estado de la red:"
+                  # El ID de la red se tapa: este fichero es PUBLICO y ese ID es
+                  # con lo que se pide entrar. La red es privada y sin marcar
+                  # 'Auth' nadie pasa, pero no hay motivo para regalarlo y que
+                  # aparezcan desconocidos en la lista de miembros.
+                  sudo zerotier-cli listnetworks 2>/dev/null | tail -2 \
+                    | sed -E 's/\b[0-9a-f]{16}\b/[RED-OCULTA]/g' \
+                    || echo "(zerotier-cli no responde)"
                   # Que el servidor conteste EN esa IP. Se pregunta desde el
                   # propio runner: no prueba el camino del jugador, pero si que
                   # el Bedrock esta sirviendo por la interfaz de ZeroTier, que es
