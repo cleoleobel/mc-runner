@@ -396,7 +396,21 @@ jobs:
           #
           # PLAYIT_SECRET ya viene del bloque env: de este paso, con ese nombre
           # exacto, asi que el agente la coge tal cual.
-          nohup /tmp/playit --stdout > /tmp/playit.log 2>&1 &
+          # DESPEGARLO DEL PASO, o no sobrevive. Esto se aprendio en vivo: en la
+          # ejecucion 27 el agente conecto (playit registro 58 ms de latencia en
+          # su panel y la prueba de ida y vuelta paso), y para cuando arranco el
+          # servidor ya figuraba "Not connected". Un 'nohup ... &' a secas deja
+          # el proceso colgando del shell del paso y con la entrada estandar
+          # atada a el; al terminar el paso se queda sin terminal y se va.
+          #
+          # setsid le da sesion propia, </dev/null le quita la entrada y disown
+          # lo saca de la tabla de trabajos del shell. Asi sobrevive al paso,
+          # igual que hace OpenVPN con su --daemon.
+          arrancar_agente() {
+            setsid nohup /tmp/playit --stdout < /dev/null >> /tmp/playit.log 2>&1 &
+            disown 2>/dev/null || true
+          }
+          arrancar_agente
           sleep 20
 
           # Si el secreto no vale, el agente se muere aqui en vez de quedarse
@@ -438,6 +452,28 @@ jobs:
             echo "host=$PLAYIT_HOST" >> "$GITHUB_OUTPUT"
             echo "puerto=$PLAYIT_PUERTO" >> "$GITHUB_OUTPUT"
             echo "La puerta rapida funciona. Queda abierta ADEMAS de portmap."
+
+            # VIGILANTE. Que la prueba pase ahora no garantiza que el agente
+            # aguante cinco horas y media: en la ejecucion 27 se cayo a los
+            # pocos minutos. Si se muere, se vuelve a levantar solo.
+            # Tambien deja el estado en un fichero, que el publicador de mas
+            # abajo sube a la release publica: sin eso, saber si el agente
+            # sigue vivo exige leer los logs del job, y esos piden permisos de
+            # administrador.
+            (
+              set +e
+              while true; do
+                if pgrep -f '/tmp/playit' >/dev/null 2>&1; then
+                  echo "$(date -u +%H:%M:%S) agente vivo" > /tmp/playit_estado.txt
+                else
+                  echo "$(date -u +%H:%M:%S) agente CAIDO, relanzando" > /tmp/playit_estado.txt
+                  arrancar_agente
+                  sleep 15
+                fi
+                sleep 30
+              done
+            ) > /dev/null 2>&1 &
+            disown 2>/dev/null || true
           else
             pkill -f '/tmp/playit' 2>/dev/null
             echo "::warning::La puerta rapida de playit no reenvia (el fallo de siempre). Se cierra y se sigue con portmap, sin consecuencias."
@@ -648,6 +684,19 @@ jobs:
                 echo
                 echo "--- sigue vivo el openvpn? ---"
                 if vivo; then echo "SI"; else echo "NO: se ha muerto"; fi
+                echo
+                echo "--- puerta rapida (playit) ---"
+                if [ "${{ steps.rapida.outputs.ok }}" = "si" ]; then
+                  echo "direccion: ${{ steps.rapida.outputs.host }}:${{ steps.rapida.outputs.puerto }}"
+                  if pgrep -f '/tmp/playit' >/dev/null 2>&1; then
+                    echo "agente: VIVO"
+                  else
+                    echo "agente: CAIDO"
+                  fi
+                  cat /tmp/playit_estado.txt 2>/dev/null
+                else
+                  echo "no activa en esta sesion"
+                fi
                 echo
                 echo "--- log de openvpn (sin bloques PEM) ---"
                 sudo sed -e '/BEGIN .*PRIVATE KEY/,/END .*PRIVATE KEY/d' \
