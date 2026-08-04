@@ -406,12 +406,17 @@ jobs:
           # setsid le da sesion propia, </dev/null le quita la entrada y disown
           # lo saca de la tabla de trabajos del shell. Asi sobrevive al paso,
           # igual que hace OpenVPN con su --daemon.
+          # SINIPV6 lo define el paso de mas abajo: o la ruta del interceptor, o
+          # vacio si no se pudo. Con env "" delante no pasa nada, se ignora.
           arrancar_agente() {
-            setsid nohup /tmp/playit --stdout < /dev/null >> /tmp/playit.log 2>&1 &
+            setsid nohup env ${SINIPV6:+LD_PRELOAD=$SINIPV6} /tmp/playit --stdout \
+              < /dev/null >> /tmp/playit.log 2>&1 &
             disown 2>/dev/null || true
           }
-          # MATAR EL IPv6 DEL RUNNER ANTES DE ARRANCARLO. Aqui esta la clave de
-          # todo, y sale del codigo del agente, no de suponer
+          # CEGAR AL AGENTE PARA IPv6, INTERCEPTANDO socket(). Lee esto antes de
+          # tocarlo, que aqui ya se fallo una vez.
+          #
+          # El origen esta en el codigo del agente, no en una suposicion
           # (agent_core/src/agent_control/mod.rs, DualStackUdpSocket::new):
           #
           #   let ip4 = UdpSocket::bind(...IPv4 UNSPECIFIED...).await?;
@@ -431,25 +436,51 @@ jobs:
           # con "2 tunnels registered" y sin reenviar un solo paquete. Esa es la
           # misma familia del bug que dejo inservible la rama 1.0.x.
           #
-          # Apagando IPv6 en el kernel, ese bind falla, .ok() devuelve None y el
-          # agente solo puede anunciar IPv4. Asi no depende de la casilla
-          # "Allow IPv6" de la cuenta, que es lo mismo pero desde el otro lado.
-          echo "--- apagando IPv6 para forzar al agente a IPv4 ---"
-          sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1     >/dev/null 2>&1 || true
-          sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1 >/dev/null 2>&1 || true
-          sudo sysctl -w net.ipv6.conf.lo.disable_ipv6=1      >/dev/null 2>&1 || true
-
-          # Y comprobarlo, porque tocar la red del runner no es gratis: si esto
-          # dejara sin camino a GitHub, no se podria guardar el mundo al final.
-          # Vale mas revertir y quedarse sin puerta rapida que perder la partida.
-          if curl -fsS -o /dev/null --max-time 15 https://api.github.com; then
-            echo "OK: IPv6 apagado y GitHub sigue accesible"
+          # LO QUE NO FUNCIONO, para que nadie lo repita: apagar IPv6 por sysctl
+          # (net.ipv6.conf.{all,default,lo}.disable_ipv6=1). Se probo en la
+          # ejecucion 30 y el bucle siguio EXACTAMENTE igual. El motivo es que
+          # disable_ipv6 quita direcciones IPv6 de las interfaces, pero NO impide
+          # crear un socket AF_INET6 ni hacer bind al comodin [::]:0. El .ok()
+          # seguia devolviendo Some y el agente seguia anunciando IPv6.
+          #
+          # LO QUE SI ATACA ESA LINEA: interceptar la llamada socket() de la libc
+          # con LD_PRELOAD y devolver error para AF_INET6. Entonces el bind falla
+          # de verdad, .ok() da None, y el agente solo puede anunciar IPv4.
+          # Solo afecta al proceso del agente: no se toca la red del runner, asi
+          # que no se arriesga el camino a GitHub ni el guardado del mundo.
+          echo "--- compilando el interceptor de sockets IPv6 ---"
+          {
+            echo '#define _GNU_SOURCE'
+            echo '#include <sys/socket.h>'
+            echo '#include <errno.h>'
+            echo '#include <dlfcn.h>'
+            echo 'typedef int (*real_socket_t)(int, int, int);'
+            echo 'static real_socket_t real_socket = NULL;'
+            echo 'int socket(int domain, int type, int protocol) {'
+            echo '    if (domain == AF_INET6) { errno = EAFNOSUPPORT; return -1; }'
+            echo '    if (!real_socket) real_socket = (real_socket_t)dlsym(RTLD_NEXT, "socket");'
+            echo '    return real_socket(domain, type, protocol);'
+            echo '}'
+          } > /tmp/sin_ipv6.c
+          SINIPV6=""
+          if gcc -shared -fPIC -o /tmp/sin_ipv6.so /tmp/sin_ipv6.c -ldl 2>/tmp/gcc.log; then
+            # COMPROBARLO ANTES DE FIARSE. Que compile no significa que
+            # intercepte: se prueba a abrir un socket IPv6 con el interceptor
+            # puesto y tiene que FALLAR. Si no falla, no sirve de nada cargarlo.
+            if LD_PRELOAD=/tmp/sin_ipv6.so node -e '
+              const d=require("dgram");
+              const s=d.createSocket("udp6");
+              s.on("error",()=>{ console.log("BIEN: el socket IPv6 ha fallado"); process.exit(0); });
+              s.bind(0,()=>{ console.log("MAL: el socket IPv6 sigue abriendose"); process.exit(1); });
+            ' 2>/dev/null | grep -q BIEN; then
+              SINIPV6="/tmp/sin_ipv6.so"
+              echo "OK: el interceptor funciona, el agente ira solo por IPv4"
+            else
+              echo "::warning::El interceptor compila pero no bloquea IPv6. Se arranca el agente sin el."
+            fi
           else
-            echo "::warning::Apagar IPv6 ha dejado al runner sin GitHub. Se revierte y se renuncia a la puerta rapida."
-            sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0     >/dev/null 2>&1 || true
-            sudo sysctl -w net.ipv6.conf.default.disable_ipv6=0 >/dev/null 2>&1 || true
-            sudo sysctl -w net.ipv6.conf.lo.disable_ipv6=0      >/dev/null 2>&1 || true
-            exit 0
+            echo "::warning::No se ha podido compilar el interceptor de IPv6. Se arranca el agente sin el."
+            cat /tmp/gcc.log 2>/dev/null
           fi
 
           arrancar_agente
