@@ -80,19 +80,33 @@ jobs:
 
           [ "$fallo" -eq 1 ] && exit 1
 
-          echo "--- El PACKS_TOKEN puede leer el repo de los packs? ---"
-          code=$(curl -s -o resp.json -w "%{http_code}" \
+          echo "--- El token VE el repositorio? (permiso Metadata) ---"
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
             -H "Authorization: Bearer $PACKS_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/$REPO_PACKS")
           echo "HTTP $code"
           case "$code" in
             200) echo "OK: el token ve el repositorio" ;;
-            401) echo "::error::PACKS_TOKEN invalido o caducado. Vuelve a generarlo."; exit 1 ;;
-            404) echo "::error::El PACKS_TOKEN no ve '$REPO_PACKS'. Causas tipicas: (a) lo creaste con la cuenta equivocada, tiene que ser la DUENA del repo privado; (b) en 'Repository access' no marcaste ese repositorio; (c) le falta el permiso 'Contents: read'."; exit 1 ;;
-            *) echo "::error::Respuesta inesperada $code"; cat resp.json; exit 1 ;;
+            401) echo "::error::PACKS_TOKEN invalido o caducado. Generalo de nuevo."; exit 1 ;;
+            404) echo "::error::El token no ve '$REPO_PACKS'. O lo creaste con la cuenta equivocada (debe ser la DUENA del repo privado), o en 'Repository access' no marcaste ese repositorio."; exit 1 ;;
+            *) echo "::error::Respuesta inesperada: $code"; exit 1 ;;
           esac
-          rm -f resp.json
+
+          # OJO: la llamada de arriba pasa con el permiso 'Metadata', que TODOS los
+          # fine-grained tokens traen de serie. Para CLONAR hace falta 'Contents',
+          # asi que hay que comprobarlo aparte o el checkout falla igual.
+          echo "--- El token puede LEER ARCHIVOS? (permiso Contents) ---"
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer $PACKS_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPO_PACKS/contents/")
+          echo "HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "::error::Al PACKS_TOKEN le falta el permiso 'Contents: Read-only'. Ve a https://github.com/settings/personal-access-tokens (con la cuenta duena del repo privado), abre el token, seccion 'Repository permissions', pon Contents = Read-only y guarda con 'Update token'."
+            exit 1
+          fi
+          echo "OK: el token puede clonar el repositorio"
 
       - name: Clonar los packs desde el repo privado
         uses: actions/checkout@v4
