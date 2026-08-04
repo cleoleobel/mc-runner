@@ -220,14 +220,25 @@ jobs:
           umask 077
           printf '%s\n' "$PORTMAP_OVPN" > /tmp/portmap.ovpn
 
-          # --route-nopull es CRITICO, no un detalle.
-          # El .ovpn puede traer 'redirect-gateway', que se llevaria TODA la
-          # salida del runner por el VPN. Si eso pasa, el job pierde el camino
-          # a GitHub y se rompen la subida del mundo y el encadenado de la
-          # siguiente sesion: se perderia la partida. Aqui solo hace falta que
-          # ENTRE el trafico del tunel, nunca cambiar la ruta por defecto.
+          # ESTO SE AFINO CON DATOS, no de primeras.
+          # El peligro real es que el .ovpn traiga 'redirect-gateway': eso se
+          # lleva TODA la salida del runner por el VPN, el job pierde el camino
+          # a GitHub y se rompen la subida del mundo y el encadenado. Se perderia
+          # la partida.
+          #
+          # El primer intento uso --route-nopull, que efectivamente protegio la
+          # ruta por defecto... pero se paso de frenada: rechazaba TAMBIEN la
+          # ruta de vuelta que portmap empuja, y lo dijo en su log:
+          #     Options error: option 'route' cannot be used in this context
+          # El sintoma era enganoso: el tunel montado, el servidor escuchando en
+          # 19132, los paquetes ENTRANDO de verdad (RX = 1 paquete tras un ping),
+          # y ni una respuesta de vuelta. Con la tabla de rutas cortada a
+          # 10.8.80.213/32, la respuesta salia por eth0 y se perdia.
+          #
+          # --pull-filter es el bisturi que hacia falta: acepta las rutas que
+          # portmap necesita y descarta SOLO la directiva peligrosa.
           sudo openvpn --config /tmp/portmap.ovpn \
-            --route-nopull \
+            --pull-filter ignore "redirect-gateway" \
             --daemon --log /tmp/openvpn.log
 
           # Esperar a que aparezca la interfaz del tunel y coja IP
@@ -249,10 +260,23 @@ jobs:
           IPVPN=$(ip -o -4 addr show dev "$TUN" | awk '{print $4}' | cut -d/ -f1)
           echo "OK: tunel levantado en $TUN con IP $IPVPN"
 
-          # RED DE SEGURIDAD: si pese a --route-nopull el VPN se hubiera llevado
-          # la ruta por defecto, el job se quedaria sin GitHub y el mundo no se
-          # podria guardar al final. Vale mas enterarse ahora y abortar limpio
-          # que descubrirlo cinco horas despues habiendo perdido la partida.
+          # Filtrar 'redirect-gateway' no basta por si solo: un servidor puede
+          # quedarse igualmente con la salida empujando dos rutas /1
+          # (0.0.0.0/1 y 128.0.0.0/1), que ganan a la default sin sustituirla.
+          # Por eso se comprueba a las claras por donde sale el trafico.
+          DEFDEV=$(ip route show default | awk '{for(i=1;i<=NF;i++) if($i=="dev") print $(i+1)}' | head -1)
+          echo "salida por defecto: ${DEFDEV:-ninguna}"
+          case "${DEFDEV:-}" in
+            tun*|tap*)
+              echo "::error::El VPN se ha quedado con la ruta por defecto del runner. Se cierra el tunel para no arriesgar el mundo."
+              sudo pkill openvpn 2>/dev/null || true
+              exit 1 ;;
+          esac
+
+          # RED DE SEGURIDAD FINAL, la que de verdad importa: si el runner se
+          # quedara sin camino a GitHub, el mundo no se podria guardar al final.
+          # Vale mas enterarse ahora y abortar limpio que descubrirlo cinco horas
+          # despues habiendo perdido la partida.
           if ! curl -fsS -o /dev/null --max-time 20 https://api.github.com; then
             echo "::error::Al levantar el VPN se ha perdido la conexion con GitHub. Se cierra el tunel para no arriesgar el mundo."
             sudo pkill openvpn 2>/dev/null || true
