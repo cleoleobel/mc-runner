@@ -171,7 +171,25 @@ jobs:
           sed -i 's/^max-threads=.*/max-threads=3/'      server.properties
           sed -i 's/^view-distance=.*/view-distance=10/' server.properties
           sed -i 's/^tick-distance=.*/tick-distance=6/'  server.properties
-          grep -E '^(max-players|view-distance|tick-distance|max-threads|level-name)=' server.properties
+
+          # LISTA DE PERMITIDOS: apagada SIEMPRE y a la fuerza.
+          # Si queda encendida con un allowlist.json vacio, el servidor rechaza a
+          # TODO el mundo con "You are not whitelisted on this server!", que
+          # parece un fallo de conexion y no lo es. El repo ya la trae en false,
+          # pero el BDS trae su propio server.properties y no conviene depender
+          # de que el copiado gane siempre.
+          if grep -q '^allow-list=' server.properties; then
+            sed -i 's/^allow-list=.*/allow-list=false/' server.properties
+          else
+            echo 'allow-list=false' >> server.properties
+          fi
+          # Por si el paquete del servidor trae una lista heredada
+          echo '[]' > allowlist.json
+
+          # Dejar A LA VISTA lo que el servidor va a leer de verdad. Sin esto,
+          # discutir sobre que valor tiene una propiedad es adivinar.
+          echo "--- server.properties EFECTIVO ---"
+          grep -vE '^#|^$' server.properties
 
       - name: Restaurar el mundo de la sesion anterior
         env:
@@ -319,7 +337,7 @@ jobs:
           # cuando el agente conecta pero el tunel no reenvia, no hay forma de
           # saber por que sin esperar toda la sesion.
           # Un asset de release en un repo publico se lee SIN autenticarse, asi
-          # que se refresca cada minuto durante los primeros 15, que es cuando
+          # que se refresca cada minuto durante los primeros 25, que es cuando
           # se decide si el tunel sirve trafico o no.
           # OJO: esto acaba siendo PUBLICO. OpenVPN no vuelca claves en su log,
           # pero como el .ovpn si las lleva, se filtran por si acaso los bloques
@@ -328,12 +346,12 @@ jobs:
           gh release view tunel --repo "$REPO" >/dev/null 2>&1 \
             || gh release create tunel --repo "$REPO" \
                  --title "Estado del tunel en vivo" \
-                 --notes "Se refresca cada minuto durante los primeros 15 de cada sesion. No contiene secretos."
+                 --notes "Se refresca cada minuto durante los primeros 25 de cada sesion. No contiene secretos."
           (
             # Sin 'set -e' aqui dentro: este bucle es solo un observador y no
             # debe morirse porque 'ss' o una subida fallen una vez.
             set +e
-            for n in $(seq 1 15); do
+            for n in $(seq 1 25); do
               {
                 echo "=== TUNEL - ejecucion ${{ github.run_number }} - minuto $n - $(date -u) ==="
                 echo "direccion publica: ${TUNEL_HOST}:${TUNEL_PUERTO}"
@@ -360,12 +378,21 @@ jobs:
                 echo
                 echo "--- puertos UDP ---"
                 ss -ulnp 2>/dev/null | head -20
+                echo
+                echo "--- lista de permitidos (debe estar en false) ---"
+                grep -iE '^(allow-list|white-list|online-mode|max-players)=' server/server.properties 2>/dev/null || echo "(no se puede leer server.properties)"
+                echo
+                echo "--- INTENTOS DE CONEXION y por que se rechazan ---"
+                grep -iaE 'player|connect|disconnect|whitelist|allow|kick' /tmp/bds.log 2>/dev/null | tail -15 || echo "(ninguno todavia)"
+                echo
+                echo "--- ultimas lineas del servidor ---"
+                tail -15 /tmp/bds.log 2>/dev/null || echo "(el servidor aun no ha arrancado)"
               } > /tmp/tunel.txt 2>&1
               gh release upload tunel /tmp/tunel.txt --repo "$REPO" --clobber >/dev/null 2>&1 || true
               sleep 60
             done
           ) &
-          echo "Publicador del estado del tunel lanzado (15 minutos)"
+          echo "Publicador del estado del tunel lanzado (25 minutos)"
 
       - name: Arrancar el servidor
         id: servidor
