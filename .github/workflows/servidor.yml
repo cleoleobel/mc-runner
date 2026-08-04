@@ -410,6 +410,48 @@ jobs:
             setsid nohup /tmp/playit --stdout < /dev/null >> /tmp/playit.log 2>&1 &
             disown 2>/dev/null || true
           }
+          # MATAR EL IPv6 DEL RUNNER ANTES DE ARRANCARLO. Aqui esta la clave de
+          # todo, y sale del codigo del agente, no de suponer
+          # (agent_core/src/agent_control/mod.rs, DualStackUdpSocket::new):
+          #
+          #   let ip4 = UdpSocket::bind(...IPv4 UNSPECIFIED...).await?;
+          #   let ip6 = UdpSocket::bind(...IPv6 UNSPECIFIED...).await.ok();
+          #
+          # Abre DOS sockets y le anuncia a playit los dos puertos. El .ok() es
+          # la trampa: en Linux ese bind de IPv6 funciona aunque la maquina no
+          # tenga IPv6 encaminable, porque existe el loopback ::1. El agente
+          # acaba diciendo "tambien me alcanzas por IPv6" y es mentira: los
+          # runners de GitHub son solo IPv4.
+          #
+          # playit entonces manda la sesion UDP a esa IPv6, no llega nunca, el
+          # agente vuelve a pedir autenticacion, y se queda en bucle. En el log
+          # se ve clavado, cada 10 s:
+          #   "udp channel requires auth, sent auth request"
+          #   "udp session details received"
+          # con "2 tunnels registered" y sin reenviar un solo paquete. Esa es la
+          # misma familia del bug que dejo inservible la rama 1.0.x.
+          #
+          # Apagando IPv6 en el kernel, ese bind falla, .ok() devuelve None y el
+          # agente solo puede anunciar IPv4. Asi no depende de la casilla
+          # "Allow IPv6" de la cuenta, que es lo mismo pero desde el otro lado.
+          echo "--- apagando IPv6 para forzar al agente a IPv4 ---"
+          sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1     >/dev/null 2>&1 || true
+          sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1 >/dev/null 2>&1 || true
+          sudo sysctl -w net.ipv6.conf.lo.disable_ipv6=1      >/dev/null 2>&1 || true
+
+          # Y comprobarlo, porque tocar la red del runner no es gratis: si esto
+          # dejara sin camino a GitHub, no se podria guardar el mundo al final.
+          # Vale mas revertir y quedarse sin puerta rapida que perder la partida.
+          if curl -fsS -o /dev/null --max-time 15 https://api.github.com; then
+            echo "OK: IPv6 apagado y GitHub sigue accesible"
+          else
+            echo "::warning::Apagar IPv6 ha dejado al runner sin GitHub. Se revierte y se renuncia a la puerta rapida."
+            sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0     >/dev/null 2>&1 || true
+            sudo sysctl -w net.ipv6.conf.default.disable_ipv6=0 >/dev/null 2>&1 || true
+            sudo sysctl -w net.ipv6.conf.lo.disable_ipv6=0      >/dev/null 2>&1 || true
+            exit 0
+          fi
+
           arrancar_agente
           sleep 20
 
