@@ -447,36 +447,53 @@ jobs:
           kill "$ECO" 2>/dev/null
           wait "$ECO" 2>/dev/null
 
+          # La direccion se deja en ficheros para que el publicador de mas abajo
+          # (otro paso) pueda reintentar la prueba contra el servidor real.
+          # OJO SI TOCAS ESTO: no se puede usar un here-document para dejar un
+          # script en /tmp. Dentro de un bloque 'run: |' de YAML, la linea del
+          # terminador iria en la columna 0 y eso CIERRA el bloque: el workflow
+          # deja de ser valido. Por eso la sonda va escrita en linea alli donde
+          # se usa, aunque se repita.
+          echo "$PLAYIT_HOST"   > /tmp/playit_host.txt
+          echo "$PLAYIT_PUERTO" > /tmp/playit_puerto.txt
+
+          # VIGILANTE, y ahora SIEMPRE, haya pasado la prueba o no. Que el
+          # agente siga vivo es util en los dos casos: si paso, para que aguante
+          # cinco horas y media (en la ejecucion 27 se cayo a los pocos
+          # minutos); si no paso, para que el publicador pueda reintentarlo
+          # contra el servidor real. Deja el estado en un fichero que acaba en
+          # la release publica: sin eso, saber si el agente sigue vivo exige
+          # leer los logs del job, y esos piden permisos de administrador.
+          (
+            set +e
+            while true; do
+              if pgrep -f '/tmp/playit' >/dev/null 2>&1; then
+                echo "$(date -u +%H:%M:%S) agente vivo" > /tmp/playit_estado.txt
+              else
+                echo "$(date -u +%H:%M:%S) agente CAIDO, relanzando" > /tmp/playit_estado.txt
+                arrancar_agente
+                sleep 15
+              fi
+              sleep 30
+            done
+          ) > /dev/null 2>&1 &
+          disown 2>/dev/null || true
+
           if [ "$VALE" -eq 0 ]; then
             echo "ok=si" >> "$GITHUB_OUTPUT"
             echo "host=$PLAYIT_HOST" >> "$GITHUB_OUTPUT"
             echo "puerto=$PLAYIT_PUERTO" >> "$GITHUB_OUTPUT"
             echo "La puerta rapida funciona. Queda abierta ADEMAS de portmap."
-
-            # VIGILANTE. Que la prueba pase ahora no garantiza que el agente
-            # aguante cinco horas y media: en la ejecucion 27 se cayo a los
-            # pocos minutos. Si se muere, se vuelve a levantar solo.
-            # Tambien deja el estado en un fichero, que el publicador de mas
-            # abajo sube a la release publica: sin eso, saber si el agente
-            # sigue vivo exige leer los logs del job, y esos piden permisos de
-            # administrador.
-            (
-              set +e
-              while true; do
-                if pgrep -f '/tmp/playit' >/dev/null 2>&1; then
-                  echo "$(date -u +%H:%M:%S) agente vivo" > /tmp/playit_estado.txt
-                else
-                  echo "$(date -u +%H:%M:%S) agente CAIDO, relanzando" > /tmp/playit_estado.txt
-                  arrancar_agente
-                  sleep 15
-                fi
-                sleep 30
-              done
-            ) > /dev/null 2>&1 &
-            disown 2>/dev/null || true
           else
-            pkill -f '/tmp/playit' 2>/dev/null
-            echo "::warning::La puerta rapida de playit no reenvia (el fallo de siempre). Se cierra y se sigue con portmap, sin consecuencias."
+            # NO se mata el agente, y esto es un cambio con motivo. Antes se
+            # mataba aqui, y con eso se perdia la unica posibilidad que
+            # quedaba: este sondeo se hace contra un ECO, minutos antes de que
+            # exista el servidor de verdad. Que falle ahora no demuestra que
+            # vaya a fallar luego. Se deja vivo con su vigilante y el
+            # publicador de mas abajo lo vuelve a probar cada minuto, ya
+            # contra el servidor real, y lo deja escrito en la release
+            # publica. Cuesta cero y puede ganar la partida.
+            echo "::warning::La puerta rapida no ha reenviado en la prueba temprana. Se deja el agente vivo y se reintenta contra el servidor real; mira 'puerta rapida' en el fichero del tunel. Se sigue con portmap igualmente."
             echo "--- log del agente ---"
             tail -25 /tmp/playit.log 2>/dev/null
           fi
@@ -686,16 +703,32 @@ jobs:
                 if vivo; then echo "SI"; else echo "NO: se ha muerto"; fi
                 echo
                 echo "--- puerta rapida (playit) ---"
-                if [ "${{ steps.rapida.outputs.ok }}" = "si" ]; then
-                  echo "direccion: ${{ steps.rapida.outputs.host }}:${{ steps.rapida.outputs.puerto }}"
+                if [ -f /tmp/playit_host.txt ]; then
+                  PH=$(cat /tmp/playit_host.txt)
+                  PP=$(cat /tmp/playit_puerto.txt)
+                  echo "direccion: ${PH}:${PP}"
+                  echo "prueba temprana (contra un eco): ${{ steps.rapida.outputs.ok }}"
                   if pgrep -f '/tmp/playit' >/dev/null 2>&1; then
                     echo "agente: VIVO"
                   else
                     echo "agente: CAIDO"
                   fi
                   cat /tmp/playit_estado.txt 2>/dev/null
+                  # LA PRUEBA QUE VALE: contra el servidor Bedrock ya arrancado.
+                  # La temprana se hace contra un eco y minutos antes, asi que
+                  # puede mentir en las dos direcciones.
+                  if node -e '
+                    const d=require("dgram"), s=d.createSocket("udp4");
+                    s.on("message",()=>process.exit(0));
+                    const i=setInterval(()=>s.send(Buffer.from("prueba"),parseInt(process.argv[2],10),process.argv[1]),1000);
+                    setTimeout(()=>{ clearInterval(i); process.exit(1); },8000);
+                  ' "$PH" "$PP" >/dev/null 2>&1; then
+                    echo "prueba REAL contra el servidor: FUNCIONA -> usad esta direccion"
+                  else
+                    echo "prueba REAL contra el servidor: no reenvia"
+                  fi
                 else
-                  echo "no activa en esta sesion"
+                  echo "no configurada en esta sesion"
                 fi
                 echo
                 echo "--- log de openvpn (sin bloques PEM) ---"
