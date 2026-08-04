@@ -1,0 +1,179 @@
+name: Servidor Bedrock
+
+# Este workflow va en un repositorio PUBLICO que contiene SOLO este archivo.
+# Los packs viven en el repositorio PRIVADO y se clonan aqui con un token.
+#
+# Motivo: en repos publicos los minutos de Actions son ilimitados; en privados
+# el plan Free da 2.000 al mes (33 h) y luego se para. Al no subir los packs
+# a este repo publico, no se redistribuye contenido con licencia.
+
+on:
+  workflow_dispatch:
+    inputs:
+      minutos:
+        description: "Minutos que debe correr el servidor antes de guardar y reiniciar"
+        required: false
+        default: "335"
+
+concurrency:
+  group: servidor-bedrock
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  BDS_VERSION: "1.26.36.1"
+  REPO_PACKS: ${{ vars.REPO_PACKS }}     # ej: villasori466-hub/server-minecraft-bedrock
+  MUNDO: CronicaDelCataclismo
+
+jobs:
+  servidor:
+    runs-on: ubuntu-latest
+    # El limite duro de un job son 6 h (360 min). Dejamos margen para guardar.
+    timeout-minutes: 350
+
+    steps:
+      - name: Descargar este repo
+        uses: actions/checkout@v4
+
+      - name: Clonar los packs desde el repo privado
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.REPO_PACKS }}
+          token: ${{ secrets.PACKS_TOKEN }}
+          path: packs
+
+      - name: Descargar el servidor Bedrock
+        run: |
+          set -euo pipefail
+          curl -fsSL -A "Mozilla/5.0" \
+            -o bds.zip \
+            "https://www.minecraft.net/bedrockdedicatedserver/bin-linux/bedrock-server-${BDS_VERSION}.zip"
+          mkdir -p server
+          unzip -q bds.zip -d server
+          rm bds.zip
+          echo "BDS $BDS_VERSION descomprimido"
+
+      - name: Montar el modpack
+        run: |
+          set -euo pipefail
+          # los packs del repo privado pisan a los del servidor si coinciden
+          cp -r packs/behavior_packs/* server/behavior_packs/
+          cp -r packs/resource_packs/* server/resource_packs/
+          cp packs/server.properties server/server.properties
+          echo "Packs instalados:"
+          ls packs/behavior_packs | wc -l
+          ls packs/resource_packs | wc -l
+
+      - name: Ajustar configuracion para el runner
+        run: |
+          set -euo pipefail
+          cd server
+          # El runner tiene 4 vCPU y 16 GB: mas holgado que el PC de casa.
+          sed -i 's/^max-threads=.*/max-threads=3/'      server.properties
+          sed -i 's/^view-distance=.*/view-distance=10/' server.properties
+          sed -i 's/^tick-distance=.*/tick-distance=6/'  server.properties
+          grep -E '^(max-players|view-distance|tick-distance|max-threads|level-name)=' server.properties
+
+      - name: Restaurar el mundo de la sesion anterior
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p "server/worlds/${MUNDO}"
+          if gh release download mundo --repo "${{ github.repository }}" --pattern world.zip --dir . 2>/dev/null; then
+            unzip -q world.zip -d "server/worlds/${MUNDO}"
+            rm world.zip
+            echo "Mundo restaurado ($(du -sh server/worlds/${MUNDO} | cut -f1))"
+          else
+            echo "No hay mundo guardado todavia: se creara uno nuevo"
+          fi
+          # registrar los packs SIEMPRE (por si el mundo venia sin ellos)
+          cp packs/_world_config/world_behavior_packs.json "server/worlds/${MUNDO}/"
+          cp packs/_world_config/world_resource_packs.json "server/worlds/${MUNDO}/"
+
+      - name: Levantar el tunel de playit.gg
+        env:
+          PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PLAYIT_SECRET:-}" ]; then
+            echo "::error::Falta el secreto PLAYIT_SECRET. Sin el, nadie puede conectarse."
+            exit 1
+          fi
+          curl -fsSL -o playit \
+            "https://github.com/playit-cloud/playit-agent/releases/latest/download/playit-linux-amd64"
+          chmod +x playit
+          nohup ./playit --secret "$PLAYIT_SECRET" > playit.log 2>&1 &
+          sleep 15
+          echo "--- playit ---"; tail -20 playit.log || true
+
+      - name: Arrancar el servidor
+        run: |
+          set -euo pipefail
+          MIN="${{ github.event.inputs.minutos || '335' }}"
+          SEGS=$(( MIN * 60 ))
+          cd server
+          chmod +x bedrock_server
+
+          # FIFO para poder mandarle 'stop' limpiamente y no matar el proceso:
+          # matarlo a lo bruto deja la base de datos LevelDB a medio escribir.
+          #
+          # Se abre en lectura-escritura (3<>) a proposito: abrir un FIFO solo
+          # para escritura se queda bloqueado hasta que alguien lo abra para
+          # leer, y aqui el lector es el propio servidor, que aun no ha
+          # arrancado. Asi ademas el servidor nunca ve EOF en su stdin.
+          mkfifo /tmp/bds_in
+          exec 3<> /tmp/bds_in
+          LD_LIBRARY_PATH=. ./bedrock_server < /tmp/bds_in &
+          BDS=$!
+
+          echo "Servidor arrancado (PID $BDS). Correra $MIN minutos."
+          # Aviso a los jugadores 5 minutos antes del reinicio
+          if [ "$SEGS" -gt 300 ]; then
+            sleep $(( SEGS - 300 ))
+            echo 'say §e[Servidor] Reinicio programado en 5 minutos. El mundo se guarda automaticamente.' >&3
+            sleep 240
+            echo 'say §c[Servidor] Reiniciando en 60 segundos...' >&3
+            sleep 60
+          else
+            sleep "$SEGS"
+          fi
+
+          echo "Enviando stop..."
+          echo 'stop' >&3
+          wait $BDS || true
+          echo "Servidor detenido limpiamente"
+
+      - name: Guardar el mundo
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ ! -d "server/worlds/${MUNDO}/db" ]; then
+            echo "::warning::No hay mundo que guardar"
+            exit 0
+          fi
+          cd "server/worlds/${MUNDO}"
+          zip -qr /tmp/world.zip .
+          cd -
+          echo "Mundo comprimido: $(du -h /tmp/world.zip | cut -f1)"
+          gh release view mundo --repo "${{ github.repository }}" >/dev/null 2>&1 \
+            || gh release create mundo --repo "${{ github.repository }}" \
+                 --title "Mundo guardado" --notes "Ultima partida guardada automaticamente."
+          gh release upload mundo /tmp/world.zip --repo "${{ github.repository }}" --clobber
+          echo "Mundo subido a la release 'mundo'"
+
+      - name: Encadenar la siguiente sesion
+        if: always()
+        env:
+          # GITHUB_TOKEN no puede disparar otro workflow (proteccion anti-bucle):
+          # hace falta un token personal.
+          GH_TOKEN: ${{ secrets.PACKS_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh workflow run servidor.yml --repo "${{ github.repository }}" \
+            -f minutos="${{ github.event.inputs.minutos || '335' }}"
+          echo "Siguiente sesion encolada"
