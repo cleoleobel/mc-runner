@@ -1,11 +1,19 @@
 name: Servidor Bedrock
 
 # Este workflow va en un repositorio PUBLICO que contiene SOLO este archivo.
-# Los packs viven en el repositorio PRIVADO y se clonan aqui con un token.
+# Los packs viven en un repositorio PRIVADO, en OTRA CUENTA, y se clonan aqui.
 #
-# Motivo: en repos publicos los minutos de Actions son ilimitados; en privados
-# el plan Free da 2.000 al mes (33 h) y luego se para. Al no subir los packs
-# a este repo publico, no se redistribuye contenido con licencia.
+# Por que publico: en repos publicos los minutos de Actions son ilimitados; en
+# privados el plan Free da 2.000 al mes (33 h) y luego se para. Al no subir los
+# packs aqui, tampoco se redistribuye contenido con licencia NoDerivatives.
+#
+# Por que dos cuentas: si esta cuenta acaba suspendida por usar Actions para
+# alojar un servidor, la cuenta con los packs no se ve afectada.
+#
+# Hacen falta DOS tokens, uno por cuenta:
+#   PACKS_TOKEN  - de la cuenta de los packs. Solo Contents: read en ese repo.
+#   CHAIN_TOKEN  - de esta cuenta. Solo Actions: read+write en este repo.
+# Separarlos limita el dano si uno se filtra.
 
 on:
   workflow_dispatch:
@@ -170,8 +178,8 @@ jobs:
         if: always()
         env:
           # GITHUB_TOKEN no puede disparar otro workflow (proteccion anti-bucle):
-          # hace falta un token personal.
-          GH_TOKEN: ${{ secrets.PACKS_TOKEN }}
+          # hace falta un token personal, y de ESTA cuenta, no la de los packs.
+          GH_TOKEN: ${{ secrets.CHAIN_TOKEN }}
         run: |
           set -euo pipefail
           gh workflow run servidor.yml --repo "${{ github.repository }}" \
