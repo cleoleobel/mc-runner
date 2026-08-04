@@ -34,6 +34,12 @@ env:
   BDS_VERSION: "1.26.36.1"
   REPO_PACKS: ${{ vars.REPO_PACKS }}     # ej: villasori466-hub/server-minecraft-bedrock
   MUNDO: CronicaDelCataclismo
+  # Direccion fija del tunel de portmap.io. Corresponde a la regla
+  #   udp://lionel123lave-36820.portmap.host:36820 => 19132
+  # de la configuracion 'minecraft'. Si algun dia se rehace la regla, se
+  # cambia AQUI y solo aqui.
+  TUNEL_HOST: "lionel123lave-36820.portmap.host"
+  TUNEL_PUERTO: "36820"
 
 jobs:
   servidor:
@@ -55,7 +61,7 @@ jobs:
         env:
           PACKS_TOKEN: ${{ secrets.PACKS_TOKEN }}
           CHAIN_TOKEN: ${{ secrets.CHAIN_TOKEN }}
-          PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
+          PORTMAP_OVPN: ${{ secrets.PORTMAP_OVPN }}
           REPO_PACKS: ${{ vars.REPO_PACKS }}
         run: |
           fallo=0
@@ -72,7 +78,7 @@ jobs:
           fi
 
           echo "--- Secretos presentes ---"
-          for s in PACKS_TOKEN CHAIN_TOKEN PLAYIT_SECRET; do
+          for s in PACKS_TOKEN CHAIN_TOKEN PORTMAP_OVPN; do
             v="${!s:-}"
             if [ -z "$v" ]; then
               echo "::error::Falta el SECRETO '$s' (o esta creado como Environment secret en vez de Repository secret)"
@@ -184,118 +190,96 @@ jobs:
           cp packs/_world_config/world_behavior_packs.json "server/worlds/${MUNDO}/"
           cp packs/_world_config/world_resource_packs.json "server/worlds/${MUNDO}/"
 
-      - name: Levantar el tunel de playit.gg
+      - name: Levantar el tunel de portmap.io
         env:
-          PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
+          PORTMAP_OVPN: ${{ secrets.PORTMAP_OVPN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          if [ -z "${PLAYIT_SECRET:-}" ]; then
-            echo "::error::Falta el secreto PLAYIT_SECRET. Sin el, nadie puede conectarse."
+
+          # POR QUE YA NO SE USA PLAYIT.
+          # El agente de playit v1.0.10 pide sus servidores de control a la API
+          # y recibe SOLO objetivos IPv6; si el envio falla no reintenta por
+          # IPv4. Los runners de GitHub son solo IPv4, asi que la sesion de
+          # control nunca se establecia: el agente autenticaba y decia
+          # "tunnels loaded", pero no reenviaba ni un paquete. Comprobado en
+          # vivo (el log se quedaba congelado en SessionNotSetup) y es un bug
+          # abierto de upstream, playit-cloud/playit-agent#194, no algo que se
+          # pueda arreglar desde aqui.
+          # portmap.io hace el reenvio por OpenVPN, da direccion fija y no
+          # tiene limite de tiempo ni de trafico en su plan basico.
+
+          if [ -z "${PORTMAP_OVPN:-}" ]; then
+            echo "::error::Falta el secreto PORTMAP_OVPN. Pega ahi el contenido ENTERO del fichero .ovpn de la configuracion 'minecraft' de portmap.io."
             exit 1
           fi
-          curl -fsSL -o playit \
-            "https://github.com/playit-cloud/playit-agent/releases/latest/download/playit-linux-amd64"
-          chmod +x playit
 
-          # POR QUE FALLABA ANTES. Causa confirmada leyendo el codigo del agente,
-          # no adivinando: 'playit-linux-amd64' ES el daemon 'playitd', y al
-          # arrancar abre SIEMPRE un socket IPC. En Linux la ruta por defecto
-          # esta fijada a pelo en el codigo:
-          #     /run/playit/playitd.sock
-          # Antes de abrirlo hace create_dir_all del directorio padre, pero
-          # DESCARTANDO el error ("let _ = std::fs::create_dir_all(parent)").
-          # Aqui el usuario es 'runner', no root, y no puede crear nada dentro
-          # de /run: la creacion falla en silencio, el directorio sigue sin
-          # existir y el bind muere con el error que veiamos en el diagnostico:
-          #     IPC error: Failed to bind to socket: No such file or directory (os error 2)
-          # En la imagen oficial de Docker no pasa porque dentro se es root.
-          # Basta con crear el directorio con sudo y cederselo al usuario.
-          sudo mkdir -p /run/playit
-          sudo chown "$(id -u):$(id -g)" /run/playit
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq openvpn
 
-          # Y el secreto va en --secret, NO en SECRET_KEY. Esa variable la lee el
-          # entrypoint.sh de la imagen de Docker, que la traduce a --secret; el
-          # binario a pelo ni la mira. Por eso en el ultimo intento arrancaba con
-          # secret_path apuntando al fichero por defecto, que no existe.
-          nohup ./playit --secret "$PLAYIT_SECRET" > playit.log 2>&1 &
-          PLAYIT_PID=$!
-          sleep 10
+          umask 077
+          printf '%s\n' "$PORTMAP_OVPN" > /tmp/portmap.ovpn
 
-          # PLAN B: el contenedor oficial, que es la via documentada y dentro
-          # corre como root. Cada prueba cuesta una ejecucion entera del
-          # workflow, asi que se intentan las dos vias en la misma pasada.
-          MODO=binario
-          if ! kill -0 $PLAYIT_PID 2>/dev/null; then
-            echo "::warning::El binario no aguanto; reintentando con el contenedor oficial."
-            echo "----- por que fallo el binario -----"
-            cat playit.log
-            docker rm -f playit >/dev/null 2>&1 || true
-            docker run -d --name playit --network host \
-              -e SECRET_KEY="$PLAYIT_SECRET" \
-              ghcr.io/playit-cloud/playit-agent:latest
-            # Se ANADE al mismo fichero (no se pisa) para no perder el motivo del
-            # primer fallo: el resto del workflow y el diagnostico leen de aqui.
-            nohup docker logs -f playit >> playit.log 2>&1 &
-            MODO=docker
-            sleep 10
-          fi
-          echo "Agente arrancado en modo: $MODO"
+          # --route-nopull es CRITICO, no un detalle.
+          # El .ovpn puede traer 'redirect-gateway', que se llevaria TODA la
+          # salida del runner por el VPN. Si eso pasa, el job pierde el camino
+          # a GitHub y se rompen la subida del mundo y el encadenado de la
+          # siguiente sesion: se perderia la partida. Aqui solo hace falta que
+          # ENTRE el trafico del tunel, nunca cambiar la ruta por defecto.
+          sudo openvpn --config /tmp/portmap.ovpn \
+            --route-nopull \
+            --daemon --log /tmp/openvpn.log
 
-          # "Sigue vivo?" segun el modo en el que acabara arrancando
-          vivo() {
-            if [ "$MODO" = docker ]; then
-              [ "$(docker inspect -f '{{.State.Running}}' playit 2>/dev/null)" = "true" ]
-            else
-              kill -0 $PLAYIT_PID 2>/dev/null
-            fi
-          }
-
-          # Esperar a que el agente negocie el tunel.
-          # El grep va dentro de un 'if': con 'grep -q ... && break' a secas, la
-          # primera vuelta sin coincidencia devuelve 1, y con 'set -e' eso mataba
-          # el paso antes de llegar a imprimir el log de diagnostico.
-          for i in $(seq 1 12); do
-            sleep 5
-            if grep -qiE 'joinmc\.link|ply\.gg|playit\.gg|tunnel' playit.log; then break; fi
+          # Esperar a que aparezca la interfaz del tunel y coja IP
+          TUN=""
+          for i in $(seq 1 30); do
+            sleep 2
+            TUN=$(ip -o -4 addr show 2>/dev/null | awk '$2 ~ /^(tun|tap)/ {print $2}' | head -1)
+            if [ -n "$TUN" ]; then break; fi
           done
 
-          echo "--- log de playit ---"
-          tail -30 playit.log || true
+          echo "--- log de openvpn ---"
+          sudo tail -30 /tmp/openvpn.log 2>/dev/null || true
 
-          # Comprobar que el agente sigue vivo: si murio, nadie podra conectarse
-          # aunque el servidor arranque perfectamente.
-          if ! vivo; then
-            echo "::error::El agente de playit se cerro por las dos vias. Sin tunel no hay servidor accesible."
-            cat playit.log
+          if [ -z "$TUN" ]; then
+            echo "::error::El VPN de portmap no llego a levantar ninguna interfaz. Sin tunel nadie puede conectarse."
+            sudo cat /tmp/openvpn.log 2>/dev/null || true
             exit 1
           fi
-          if grep -qiE 'invalid.*secret|unauthorized|denied|failed to authenticate' playit.log; then
-            echo "::error::playit rechazo el secreto. Revisa PLAYIT_SECRET."
+          IPVPN=$(ip -o -4 addr show dev "$TUN" | awk '{print $4}' | cut -d/ -f1)
+          echo "OK: tunel levantado en $TUN con IP $IPVPN"
+
+          # RED DE SEGURIDAD: si pese a --route-nopull el VPN se hubiera llevado
+          # la ruta por defecto, el job se quedaria sin GitHub y el mundo no se
+          # podria guardar al final. Vale mas enterarse ahora y abortar limpio
+          # que descubrirlo cinco horas despues habiendo perdido la partida.
+          if ! curl -fsS -o /dev/null --max-time 20 https://api.github.com; then
+            echo "::error::Al levantar el VPN se ha perdido la conexion con GitHub. Se cierra el tunel para no arriesgar el mundo."
+            sudo pkill openvpn 2>/dev/null || true
             exit 1
           fi
-          echo "OK: agente de playit conectado"
+          echo "OK: GitHub sigue accesible, la ruta por defecto esta intacta"
 
-          # Sacar la direccion y dejarla BIEN VISIBLE en el resumen de la ejecucion,
-          # que sale arriba del todo en la pagina del run.
-          DIR=$(grep -oiE '[a-z0-9-]+\.(gl\.joinmc\.link|joinmc\.link|ply\.gg|playit\.gg)(:[0-9]+)?' playit.log | head -1 || true)
+          # "Sigue vivo?" - lo usa tambien el publicador de mas abajo
+          vivo() {
+            pgrep -x openvpn >/dev/null 2>&1
+          }
 
+          # La direccion ya no hay que rascarla de ningun log: en portmap es fija
+          # y esta arriba, en las variables del workflow. Se deja bien visible en
+          # el resumen de la ejecucion, que sale arriba del todo en la pagina del
+          # run.
           {
             echo "# Servidor Bedrock en marcha"
             echo ""
-            if [ -n "$DIR" ]; then
-              echo '## Direccion para entrar'
-              echo ""
-              echo '```'
-              echo "$DIR"
-              echo '```'
-              echo ""
-              echo "Si no lleva puerto, usa el que te diga playit en su panel."
-            else
-              echo '## No se pudo leer la direccion del log'
-              echo ""
-              echo "Miralo en https://playit.gg/account/tunnels (agente **lionel**)."
-            fi
+            echo '## Direccion para entrar'
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Servidor | \`${TUNEL_HOST}\` |"
+            echo "| Puerto | \`${TUNEL_PUERTO}\` |"
+            echo ""
+            echo "En Minecraft: **Jugar > Servidores > Anadir servidor**. El puerto va en su casilla aparte, no pegado al nombre."
             echo ""
             echo "- Minecraft **1.26.20+** | 16 packs | 6 jugadores"
             echo "- La primera conexion descarga **31 MB** de packs: parece colgado pero no lo esta."
@@ -303,9 +287,7 @@ jobs:
             echo "- El servidor se reinicia solo cada ~5h35m. La direccion NO cambia."
           } >> "$GITHUB_STEP_SUMMARY"
 
-          if [ -n "$DIR" ]; then
-            echo "::notice title=Direccion del servidor::$DIR"
-          fi
+          echo "::notice title=Direccion del servidor::${TUNEL_HOST} puerto ${TUNEL_PUERTO}"
 
           # VENTANA AL RUNNER, en vivo.
           # Los logs de Actions solo los ve un admin y el diagnostico final no
@@ -314,8 +296,10 @@ jobs:
           # saber por que sin esperar toda la sesion.
           # Un asset de release en un repo publico se lee SIN autenticarse, asi
           # que se refresca cada minuto durante los primeros 15, que es cuando
-          # se decide si el tunel sirve trafico o no. Sin secretos dentro: el
-          # log del agente no imprime la secret_key.
+          # se decide si el tunel sirve trafico o no.
+          # OJO: esto acaba siendo PUBLICO. OpenVPN no vuelca claves en su log,
+          # pero como el .ovpn si las lleva, se filtran por si acaso los bloques
+          # PEM antes de publicar. Mas vale la linea de sed que un disgusto.
           REPO="${{ github.repository }}"
           gh release view tunel --repo "$REPO" >/dev/null 2>&1 \
             || gh release create tunel --repo "$REPO" \
@@ -328,13 +312,27 @@ jobs:
             for n in $(seq 1 15); do
               {
                 echo "=== TUNEL - ejecucion ${{ github.run_number }} - minuto $n - $(date -u) ==="
-                echo "modo de arranque del agente: $MODO"
+                echo "direccion publica: ${TUNEL_HOST}:${TUNEL_PUERTO}"
+                echo "interfaz: ${TUN}  IP del tunel: ${IPVPN}"
                 echo
-                echo "--- log COMPLETO del agente ---"
-                cat playit.log 2>/dev/null || echo "(sin log)"
-                echo
-                echo "--- el agente sigue vivo? ---"
+                echo "--- sigue vivo el openvpn? ---"
                 if vivo; then echo "SI"; else echo "NO: se ha muerto"; fi
+                echo
+                echo "--- log de openvpn (sin bloques PEM) ---"
+                sudo sed -e '/BEGIN .*PRIVATE KEY/,/END .*PRIVATE KEY/d' \
+                         -e '/BEGIN CERTIFICATE/,/END CERTIFICATE/d' \
+                         /tmp/openvpn.log 2>/dev/null | tail -40 || echo "(sin log)"
+                echo
+                echo "--- interfaz del tunel ---"
+                ip -4 addr show dev "$TUN" 2>/dev/null || echo "(la interfaz ya no existe)"
+                echo
+                echo "--- rutas (la default NO debe ir por el tunel) ---"
+                ip route 2>/dev/null | head -10
+                echo
+                echo "--- trafico que ha pasado por el tunel ---"
+                # Si aqui los contadores siguen a cero cuando alguien ha
+                # intentado entrar, es que portmap no esta reenviando.
+                ip -s link show dev "$TUN" 2>/dev/null | tail -5
                 echo
                 echo "--- puertos UDP ---"
                 ss -ulnp 2>/dev/null | head -20
@@ -392,7 +390,9 @@ jobs:
 
           echo "::notice title=Servidor listo::Aceptando conexiones"
 
-          # Comprobar que esta escuchando en UDP 19132, que es a donde apunta playit
+          # Comprobar que esta escuchando en UDP 19132, que es el puerto local al
+          # que apunta la regla de portmap. Escucha en 0.0.0.0, asi que tambien
+          # recibe lo que entra por la interfaz del tunel.
           ss -ulnp 2>/dev/null | grep -E '19132' || echo "AVISO: no veo el puerto 19132 escuchando"
 
           # DIAGNOSTICO TEMPRANO: se publica con el servidor YA corriendo, para
@@ -404,7 +404,12 @@ jobs:
             echo
             echo "--- ultimas lineas del servidor ---"; tail -25 /tmp/bds.log
             echo
-            echo "--- agente playit ---"; tail -40 ../playit.log 2>/dev/null || tail -40 playit.log 2>/dev/null || echo "no encontrado"
+            echo "--- tunel de portmap (openvpn, sin bloques PEM) ---"
+            sudo sed -e '/BEGIN .*PRIVATE KEY/,/END .*PRIVATE KEY/d' \
+                     -e '/BEGIN CERTIFICATE/,/END CERTIFICATE/d' \
+                     /tmp/openvpn.log 2>/dev/null | tail -25 || echo "no encontrado"
+            echo
+            echo "--- interfaz del tunel ---"; ip -4 addr show 2>/dev/null | grep -A2 -E '^[0-9]+: (tun|tap)' || echo "(ninguna)"
             echo
             echo "--- prueba local: responde el servidor en 127.0.0.1:19132? ---"
             timeout 5 bash -c 'printf "\x01" > /dev/udp/127.0.0.1/19132' 2>&1 && echo "puerto alcanzable" || echo "no alcanzable"
@@ -458,15 +463,18 @@ jobs:
             echo "--- librerias que le faltan al binario ---"
             ldd server/bedrock_server 2>/dev/null | grep -i "not found" || echo "(ninguna)"
             echo
-            echo "--- agente playit ---"
-            if [ -f playit.log ]; then tail -40 playit.log; else echo "NO existe playit.log"; fi
+            echo "--- tunel de portmap (openvpn, sin bloques PEM) ---"
+            if [ -f /tmp/openvpn.log ]; then
+              sudo sed -e '/BEGIN .*PRIVATE KEY/,/END .*PRIVATE KEY/d' \
+                       -e '/BEGIN CERTIFICATE/,/END CERTIFICATE/d' \
+                       /tmp/openvpn.log | tail -40
+            else
+              echo "NO existe /tmp/openvpn.log: el tunel ni se lanzo"
+            fi
             echo
-            echo "--- directorio del socket IPC (/run/playit) ---"
-            ls -la /run/playit 2>&1 || echo "NO existe: el bind del socket volveria a fallar"
-            echo
-            echo "--- contenedor de playit (solo si se uso el plan B) ---"
-            docker ps -a --filter name=playit --format '{{.Names}} {{.Status}}' 2>/dev/null || echo "(docker no disponible)"
-            docker logs --tail 30 playit 2>&1 || true
+            echo "--- interfaces y rutas ---"
+            ip -4 addr show 2>/dev/null | grep -A2 -E '^[0-9]+: (tun|tap)' || echo "(no hay interfaz de tunel)"
+            ip route 2>/dev/null | head -10
             echo
             echo "--- puertos UDP escuchando ---"
             ss -ulnp 2>/dev/null || echo "(ss no disponible)"

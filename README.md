@@ -37,7 +37,26 @@ la que guarda el modpack no se ve arrastrada.
 |---|---|---|
 | `PACKS_TOKEN` | **villasori466-hub** | `Contents: read` sobre el repo de los packs |
 | `CHAIN_TOKEN` | **cleoleobel** | `Actions: read and write` sobre este repo |
-| `PLAYIT_SECRET` | — | La `secret_key` del agente de playit.gg |
+| `PORTMAP_OVPN` | — | El fichero `.ovpn` **entero** de la configuración `minecraft` de portmap.io |
+
+### El túnel
+
+La dirección pública es fija y vive en las variables `TUNEL_HOST` / `TUNEL_PUERTO`
+del workflow:
+
+```
+lionel123lave-36820.portmap.host   puerto 36820
+```
+
+Corresponde a la regla `udp://lionel123lave-36820.portmap.host:36820 => 19132`
+de portmap.io. Si algún día se rehace la regla, se cambia en el workflow y en
+ningún sitio más.
+
+> **No se usa playit.gg.** Su agente 1.0.10 pide los servidores de control a la
+> API, recibe solo objetivos IPv6 y no reintenta por IPv4. Los runners de GitHub
+> son solo IPv4, así que la sesión de control nunca se establecía: el agente
+> autenticaba y decía «tunnels loaded», pero no reenviaba ni un paquete. Es un
+> bug abierto de upstream ([playit-agent#194](https://github.com/playit-cloud/playit-agent/issues/194)).
 
 Dos tokens en vez de uno porque los *fine-grained tokens* pertenecen a una sola
 cuenta. Además, así cada uno tiene el permiso mínimo: si el que vive en este
@@ -62,7 +81,7 @@ Desde ahí se encadena solo. Para pararlo: `Actions → ··· → Disable workf
 | Sesión | ~5 h 35 min |
 | Corte entre sesiones | 3-5 min |
 | Reinicios al día | ~4 |
-| Dirección | **Fija**, la del túnel de playit (atada a la cuenta, no a la máquina) |
+| Dirección | **Fija**, la del túnel de portmap.io (atada a la cuenta, no a la máquina) |
 | Mundo | Guardado en la release `mundo` de este repo, restaurado al arrancar |
 | Aviso a jugadores | Por chat, 5 min y 1 min antes de cada reinicio |
 
