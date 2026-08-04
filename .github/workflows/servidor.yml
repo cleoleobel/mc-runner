@@ -196,30 +196,34 @@ jobs:
           curl -fsSL -o playit \
             "https://github.com/playit-cloud/playit-agent/releases/latest/download/playit-linux-amd64"
           chmod +x playit
-
-          # El daemon 1.0.10 no arranca solo con --secret: intenta abrir un socket
-          # IPC para un frontend que aqui no existe y muere con
-          #   "IPC error: Failed to bind to socket: No such file or directory".
-          # Se le da el secreto en FICHERO TOML (igual que hace el agente de
-          # escritorio) y un socket en una ruta que si existe.
-          umask 077
-          printf 'secret_key = "%s"\n' "$PLAYIT_SECRET" > /tmp/playit.toml
           mkdir -p /tmp/playit
 
-          nohup ./playit \
-            --secret-path /tmp/playit.toml \
-            --socket-path /tmp/playit/agent.sock \
-            > playit.log 2>&1 &
-          PLAYIT_PID=$!
-
-          sleep 8
-          # Si el fichero TOML no le sirvio, se reintenta con el secreto en linea
-          if ! kill -0 $PLAYIT_PID 2>/dev/null; then
-            echo "El arranque con --secret-path fallo; reintentando con --secret"
-            cat playit.log
-            nohup ./playit --secret "$PLAYIT_SECRET" \
+          # FORMA DOCUMENTADA (README oficial del agente): el secreto va en la
+          # variable de entorno SECRET_KEY, no en un flag. Su ejemplo de Docker es
+          #   docker run ... -e SECRET_KEY=<secret> ghcr.io/playit-cloud/playit-agent
+          # Con --secret a secas el daemon arranca con secret_path=None, intenta
+          # abrir un socket IPC para un frontend inexistente y muere con
+          # "IPC error: Failed to bind to socket".
+          arrancar_playit() {
+            SECRET_KEY="$PLAYIT_SECRET" nohup ./playit \
               --socket-path /tmp/playit/agent.sock > playit.log 2>&1 &
             PLAYIT_PID=$!
+          }
+
+          arrancar_playit
+          sleep 10
+
+          # Plan B por si esta version no leyera la variable de entorno
+          if ! kill -0 $PLAYIT_PID 2>/dev/null; then
+            echo "SECRET_KEY no funciono. Log:"; cat playit.log
+            echo "Reintentando con fichero de secreto..."
+            umask 077
+            printf 'secret_key = "%s"\n' "$PLAYIT_SECRET" > /tmp/playit.toml
+            SECRET_KEY="$PLAYIT_SECRET" nohup ./playit \
+              --secret-path /tmp/playit.toml \
+              --socket-path /tmp/playit/agent.sock > playit.log 2>&1 &
+            PLAYIT_PID=$!
+            sleep 10
           fi
 
           # Esperar a que el agente negocie el tunel
