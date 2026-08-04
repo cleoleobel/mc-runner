@@ -177,8 +177,46 @@ jobs:
             "https://github.com/playit-cloud/playit-agent/releases/latest/download/playit-linux-amd64"
           chmod +x playit
           nohup ./playit --secret "$PLAYIT_SECRET" > playit.log 2>&1 &
-          sleep 15
-          echo "--- playit ---"; tail -20 playit.log || true
+
+          # Esperar a que el agente negocie el tunel
+          for i in $(seq 1 12); do
+            sleep 5
+            grep -qiE 'joinmc\.link|ply\.gg|playit\.gg' playit.log && break
+          done
+
+          echo "--- log de playit ---"
+          tail -30 playit.log || true
+
+          # Sacar la direccion y dejarla BIEN VISIBLE en el resumen de la ejecucion,
+          # que sale arriba del todo en la pagina del run.
+          DIR=$(grep -oiE '[a-z0-9-]+\.(gl\.joinmc\.link|joinmc\.link|ply\.gg|playit\.gg)(:[0-9]+)?' playit.log | head -1 || true)
+
+          {
+            echo "# Servidor Bedrock en marcha"
+            echo ""
+            if [ -n "$DIR" ]; then
+              echo '## Direccion para entrar'
+              echo ""
+              echo '```'
+              echo "$DIR"
+              echo '```'
+              echo ""
+              echo "Si no lleva puerto, usa el que te diga playit en su panel."
+            else
+              echo '## No se pudo leer la direccion del log'
+              echo ""
+              echo "Miralo en https://playit.gg/account/tunnels (agente **lionel**)."
+            fi
+            echo ""
+            echo "- Minecraft **1.26.20+** | 16 packs | 6 jugadores"
+            echo "- La primera conexion descarga **31 MB** de packs: parece colgado pero no lo esta."
+            echo "- Escribe **\`!guia\`** en el chat para abrir la Cronica del Cataclismo."
+            echo "- El servidor se reinicia solo cada ~5h35m. La direccion NO cambia."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -n "$DIR" ]; then
+            echo "::notice title=Direccion del servidor::$DIR"
+          fi
 
       - name: Arrancar el servidor
         id: servidor
