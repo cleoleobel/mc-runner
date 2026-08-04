@@ -196,6 +196,26 @@ jobs:
           # Por si el paquete del servidor trae una lista heredada
           echo '[]' > allowlist.json
 
+          # AUTENTICACION DE XBOX APAGADA.
+          # Con online-mode=true el servidor exige verificar cada jugador contra
+          # Xbox Live. Si el cliente no presenta una sesion que el servidor pueda
+          # validar, lo rechaza EN EL SALUDO INICIAL, sin anotar nada en su
+          # registro, y el cliente lo traduce como "You are not whitelisted on
+          # this server!", que no tiene nada que ver.
+          # Se descarto todo lo demas antes de llegar aqui: allow-list=false
+          # confirmado en el server.properties efectivo, y version del servidor
+          # igualada a la del cliente (1.26.33). El sintoma seguia igual.
+          #
+          # EL PRECIO: el servidor ya no comprueba la identidad de nadie.
+          # Cualquiera que sepa la direccion entra, y con el nombre que quiera.
+          # Es asumible para una partida de 6 plazas con una direccion que no se
+          # publica, pero conviene no repartirla en abierto.
+          if grep -q '^online-mode=' server.properties; then
+            sed -i 's/^online-mode=.*/online-mode=false/' server.properties
+          else
+            echo 'online-mode=false' >> server.properties
+          fi
+
           # Dejar A LA VISTA lo que el servidor va a leer de verdad. Sin esto,
           # discutir sobre que valor tiene una propiedad es adivinar.
           echo "--- server.properties EFECTIVO ---"
