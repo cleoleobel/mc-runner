@@ -187,6 +187,7 @@ jobs:
       - name: Levantar el tunel de playit.gg
         env:
           PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           if [ -z "${PLAYIT_SECRET:-}" ]; then
@@ -305,6 +306,44 @@ jobs:
           if [ -n "$DIR" ]; then
             echo "::notice title=Direccion del servidor::$DIR"
           fi
+
+          # VENTANA AL RUNNER, en vivo.
+          # Los logs de Actions solo los ve un admin y el diagnostico final no
+          # se publica hasta que acaba el job, 5 h y media despues. Sin esto,
+          # cuando el agente conecta pero el tunel no reenvia, no hay forma de
+          # saber por que sin esperar toda la sesion.
+          # Un asset de release en un repo publico se lee SIN autenticarse, asi
+          # que se refresca cada minuto durante los primeros 15, que es cuando
+          # se decide si el tunel sirve trafico o no. Sin secretos dentro: el
+          # log del agente no imprime la secret_key.
+          REPO="${{ github.repository }}"
+          gh release view tunel --repo "$REPO" >/dev/null 2>&1 \
+            || gh release create tunel --repo "$REPO" \
+                 --title "Estado del tunel en vivo" \
+                 --notes "Se refresca cada minuto durante los primeros 15 de cada sesion. No contiene secretos."
+          (
+            # Sin 'set -e' aqui dentro: este bucle es solo un observador y no
+            # debe morirse porque 'ss' o una subida fallen una vez.
+            set +e
+            for n in $(seq 1 15); do
+              {
+                echo "=== TUNEL - ejecucion ${{ github.run_number }} - minuto $n - $(date -u) ==="
+                echo "modo de arranque del agente: $MODO"
+                echo
+                echo "--- log COMPLETO del agente ---"
+                cat playit.log 2>/dev/null || echo "(sin log)"
+                echo
+                echo "--- el agente sigue vivo? ---"
+                if vivo; then echo "SI"; else echo "NO: se ha muerto"; fi
+                echo
+                echo "--- puertos UDP ---"
+                ss -ulnp 2>/dev/null | head -20
+              } > /tmp/tunel.txt 2>&1
+              gh release upload tunel /tmp/tunel.txt --repo "$REPO" --clobber >/dev/null 2>&1 || true
+              sleep 60
+            done
+          ) &
+          echo "Publicador del estado del tunel lanzado (15 minutos)"
 
       - name: Arrancar el servidor
         id: servidor
