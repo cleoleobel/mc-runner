@@ -370,10 +370,20 @@ jobs:
           set +e
           echo "ok=no" >> "$GITHUB_OUTPUT"
 
-          if [ -z "${ZT_RED:-}" ] || [ -z "${ZT_TOKEN:-}" ]; then
+          # DECIR CUAL FALTA, no "no configurada" a secas. Callarse aqui costo una
+          # sesion entera: el paso salia en verde, el fichero decia "no
+          # configurada" y no habia forma de saber si el fallo era el nombre, la
+          # pestana o el repositorio. Los avisos ademas se leen por la API sin
+          # autenticarse, mientras que los logs del job dan 403 desde fuera.
+          FALTA=""
+          [ -z "${ZT_RED:-}" ]   && FALTA="$FALTA ZT_RED(variable)"
+          [ -z "${ZT_TOKEN:-}" ] && FALTA="$FALTA ZT_TOKEN(secreto)"
+          if [ -n "$FALTA" ]; then
+            echo "::warning::Red directa no activa: llega vacio ->$FALTA . Comprueba TRES cosas: (1) que sea el repo mc-runner, (2) que ZT_RED este en la pestana Variables y ZT_TOKEN en la pestana Secrets, no al reves, (3) que sean 'Repository' y no 'Environment'. Se sigue con el tunel de portmap."
             echo "Red directa no configurada. Se juega por el tunel de portmap, como siempre."
             exit 0
           fi
+          echo "ZT_RED recibido (${#ZT_RED} caracteres), ZT_TOKEN recibido (${#ZT_TOKEN} caracteres)"
 
           # ZT_IP es OPCIONAL. Si no se pone, se calcula sola preguntandole a la
           # API por el rango de la red y cogiendo el .200. Asi hay una variable
