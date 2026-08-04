@@ -22,6 +22,14 @@ on:
         description: "Minutos que debe correr el servidor antes de guardar y reiniciar"
         required: false
         default: "335"
+      mundo_nuevo:
+        description: "Empezar un mundo NUEVO (el actual no se borra: se guarda en la release 'mundo-anterior')"
+        required: false
+        default: "no"
+        type: choice
+        options:
+          - "no"
+          - "si"
 
 concurrency:
   group: servidor-bedrock
@@ -169,6 +177,12 @@ jobs:
           cp -r packs/behavior_packs/* server/behavior_packs/
           cp -r packs/resource_packs/* server/resource_packs/
           cp packs/server.properties server/server.properties
+          # Sin esto, el dueno entra como 'member' y no puede usar NI UN comando:
+          # ni /time, ni /gamemode, ni /setworldspawn, aunque allow-cheats este
+          # activado. La lista de operadores va por XUID, no por nombre.
+          cp packs/permissions.json server/permissions.json
+          echo "Operadores declarados:"
+          grep -c '"permission"' server/permissions.json || echo 0
           echo "Packs instalados:"
           ls packs/behavior_packs | wc -l
           ls packs/resource_packs | wc -l
@@ -239,25 +253,49 @@ jobs:
             ver_guardada=$(tr -d '[:space:]' < /tmp/bds-version.txt)
           fi
 
+          # Se puede pedir un mundo nuevo a mano al lanzar el workflow. Aunque se
+          # pida, el anterior NO se borra: se aparta igual que en un cambio de
+          # version. Borrar la partida de alguien no puede depender de un
+          # desplegable mal pulsado.
+          pedido_nuevo="${{ github.event.inputs.mundo_nuevo || 'no' }}"
+          fresco=si
+
           if gh release download mundo --repo "$REPO" --pattern world.zip --dir . 2>/dev/null; then
-            if [ "$ver_guardada" = "$BDS_VERSION" ]; then
+            motivo=""
+            if [ "$pedido_nuevo" = "si" ]; then
+              motivo="lo has pedido al lanzar la ejecucion"
+            elif [ "$ver_guardada" != "$BDS_VERSION" ]; then
+              motivo="el guardado es de la version '${ver_guardada:-desconocida}' y ahora se usa ${BDS_VERSION}"
+            fi
+
+            if [ -z "$motivo" ]; then
               unzip -q world.zip -d "server/worlds/${MUNDO}"
               rm world.zip
+              fresco=no
               echo "Mundo restaurado ($(du -sh server/worlds/${MUNDO} | cut -f1))"
             else
-              echo "::warning::El mundo guardado es de la version '${ver_guardada:-desconocida}' y ahora se usa ${BDS_VERSION}. Se aparta y se empieza uno nuevo."
+              echo "::warning::Se empieza un mundo NUEVO porque $motivo. El anterior no se borra."
               gh release view mundo-anterior --repo "$REPO" >/dev/null 2>&1 \
                 || gh release create mundo-anterior --repo "$REPO" \
                      --title "Mundo de una version anterior" \
                      --notes "Mundo apartado al cambiar de version del servidor. No se borra: si se vuelve a esa version, se puede recuperar desde aqui."
-              mv world.zip "world-${ver_guardada:-desconocida}.zip"
-              gh release upload mundo-anterior "world-${ver_guardada:-desconocida}.zip" --repo "$REPO" --clobber
-              rm -f "world-${ver_guardada:-desconocida}.zip"
-              echo "Mundo anterior a salvo en la release 'mundo-anterior'. Se genera uno nuevo."
+              # Con fecha y numero de ejecucion en el nombre: si se aparta un
+              # mundo mas de una vez, el segundo no puede pisar al primero.
+              archivo="world-${ver_guardada:-desconocida}-$(date -u +%Y%m%d-%H%M)-run${{ github.run_number }}.zip"
+              mv world.zip "$archivo"
+              gh release upload mundo-anterior "$archivo" --repo "$REPO" --clobber
+              rm -f "$archivo"
+              echo "Mundo anterior a salvo como '$archivo' en la release 'mundo-anterior'."
             fi
           else
             echo "No hay mundo guardado todavia: se creara uno nuevo"
           fi
+
+          # Se lo pasamos al paso del servidor: solo en un mundo recien generado
+          # tiene sentido forzar que amanezca.
+          echo "MUNDO_FRESCO=$fresco" >> "$GITHUB_ENV"
+          echo "Mundo recien generado: $fresco"
+
           # registrar los packs SIEMPRE (por si el mundo venia sin ellos)
           cp packs/_world_config/world_behavior_packs.json "server/worlds/${MUNDO}/"
           cp packs/_world_config/world_resource_packs.json "server/worlds/${MUNDO}/"
@@ -377,8 +415,8 @@ jobs:
             echo ""
             echo "En Minecraft: **Jugar > Servidores > Anadir servidor**. El puerto va en su casilla aparte, no pegado al nombre."
             echo ""
-            echo "- Minecraft **1.26.20+** | 16 packs | 6 jugadores"
-            echo "- La primera conexion descarga **31 MB** de packs: parece colgado pero no lo esta."
+            echo "- Minecraft **1.26.33** exacto | 15 packs | 6 jugadores"
+            echo "- La primera conexion descarga **~15 MB** de packs: parece colgado pero no lo esta."
             echo "- Escribe **\`!guia\`** en el chat para abrir la Cronica del Cataclismo."
             echo "- El servidor se reinicia solo cada ~5h35m. La direccion NO cambia."
           } >> "$GITHUB_STEP_SUMMARY"
@@ -494,6 +532,20 @@ jobs:
           fi
 
           echo "::notice title=Servidor listo::Aceptando conexiones"
+
+          # QUE EL PRIMER DIA SEA DE DIA.
+          # En un mundo recien generado los jugadores aparecian de noche, en
+          # dificultad hard y con Horde Nights activo: una horda de zombis encima
+          # antes de tener con que defenderse. Se fuerza el amanecer UNICAMENTE
+          # en la sesion que genera el mundo; despues el ciclo sigue solo y las
+          # noches de horda quedan intactas, que para eso esta el mod.
+          if [ "${MUNDO_FRESCO:-no}" = "si" ]; then
+            sleep 3
+            echo 'time set day' >&3
+            sleep 2
+            echo 'say Mundo nuevo: amanece. Aprovechad el dia para prepararos.' >&3
+            echo "Mundo recien generado: amanecer forzado"
+          fi
 
           # Comprobar que esta escuchando en UDP 19132, que es el puerto local al
           # que apunta la regla de portmap. Escucha en 0.0.0.0, asi que tambien
