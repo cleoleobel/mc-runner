@@ -180,9 +180,16 @@ jobs:
           # Sin esto, el dueno entra como 'member' y no puede usar NI UN comando:
           # ni /time, ni /gamemode, ni /setworldspawn, aunque allow-cheats este
           # activado. La lista de operadores va por XUID, no por nombre.
-          cp packs/permissions.json server/permissions.json
-          echo "Operadores declarados:"
-          grep -c '"permission"' server/permissions.json || echo 0
+          #
+          # Es OPCIONAL a proposito. Este paso corre con 'set -e', y un fichero
+          # que falta no puede tumbar el servidor entero: sin operadores se juega
+          # igual, solo que sin comandos. Avisar y seguir.
+          if [ -f packs/permissions.json ]; then
+            cp packs/permissions.json server/permissions.json
+            echo "Operadores declarados: $(grep -c '"permission"' server/permissions.json || echo 0)"
+          else
+            echo "::warning::El repo de packs no trae permissions.json. Nadie sera operador y no se podran usar comandos dentro del juego."
+          fi
           echo "Packs instalados:"
           ls packs/behavior_packs | wc -l
           ls packs/resource_packs | wc -l
