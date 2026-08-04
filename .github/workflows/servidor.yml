@@ -335,6 +335,96 @@ jobs:
           cp packs/_world_config/world_behavior_packs.json "server/worlds/${MUNDO}/"
           cp packs/_world_config/world_resource_packs.json "server/worlds/${MUNDO}/"
 
+      # PUERTA RAPIDA, OPCIONAL Y ADITIVA.
+      #
+      # El rele gratuito de portmap esta en Londres y los jugadores en Santo
+      # Domingo: 218 ms medidos, cruzando el Atlantico dos veces, porque el
+      # runner cae en Virginia. Elegir region en portmap es de pago. playit si
+      # deja elegirla gratis, pero su agente 1.0.x no sirve aqui: pide los
+      # destinos de control a la API, recibe solo IPv6 y no reintenta por IPv4
+      # (playit-agent#194, abierto). Los runners son solo IPv4.
+      #
+      # La version 0.17.1 es otra generacion del programa, sigue soportada por
+      # upstream y NO comparte ese codigo. Merece la pena intentarlo, pero sin
+      # jugarse la partida: este paso NO sustituye a portmap. Si funciona, el
+      # servidor queda con DOS puertas abiertas a la vez y se anuncia la rapida;
+      # si no, se cierra y todo sigue exactamente igual que antes.
+      #
+      # Y "funciona" aqui no significa que el agente lo diga. La vez anterior
+      # decia "tunnels loaded" mientras no reenviaba ni un paquete. Lo unico que
+      # se acepta como prueba es un paquete que salga de este runner, de la
+      # vuelta por la direccion publica y vuelva a entrar.
+      #
+      # Para activarla hacen falta las tres cosas; si falta una, no se intenta:
+      #   secreto  PLAYIT_SECRET   la secret key del agente
+      #   variable PLAYIT_HOST     direccion publica del tunel
+      #   variable PLAYIT_PUERTO   su puerto
+      - name: Puerta rapida opcional (playit, no sustituye a portmap)
+        id: rapida
+        env:
+          PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
+          PLAYIT_HOST: ${{ vars.PLAYIT_HOST }}
+          PLAYIT_PUERTO: ${{ vars.PLAYIT_PUERTO }}
+        run: |
+          # Sin 'set -e': este paso es un extra y no puede tumbar la sesion.
+          set +e
+          echo "ok=no" >> "$GITHUB_OUTPUT"
+
+          if [ -z "${PLAYIT_SECRET:-}" ] || [ -z "${PLAYIT_HOST:-}" ] || [ -z "${PLAYIT_PUERTO:-}" ]; then
+            echo "Puerta rapida no configurada. Se usa solo portmap, como siempre."
+            exit 0
+          fi
+
+          echo "--- bajando el agente 0.17.1 ---"
+          curl -fsSL -o /tmp/playit \
+            https://github.com/playit-cloud/playit-agent/releases/download/v0.17.1/playit-linux-amd64 \
+            && chmod +x /tmp/playit
+          if [ ! -x /tmp/playit ]; then
+            echo "::warning::No se ha podido bajar el agente de playit. Se sigue solo con portmap."
+            exit 0
+          fi
+
+          SECRET_KEY="$PLAYIT_SECRET" nohup /tmp/playit > /tmp/playit.log 2>&1 &
+          sleep 20
+
+          # ECO TEMPORAL en el puerto del juego. El servidor Bedrock aun no ha
+          # arrancado, asi que 19132 esta libre: se pone un eco que devuelve lo
+          # que le llegue, se prueba la direccion publica desde aqui mismo y se
+          # quita. Si el paquete vuelve, el tunel reenvia DE VERDAD.
+          node -e '
+            const d=require("dgram"), s=d.createSocket("udp4");
+            s.on("message",(m,r)=>s.send(m,r.port,r.address));
+            s.bind(19132);
+            setTimeout(()=>process.exit(0), 60000);
+          ' > /tmp/eco.log 2>&1 &
+          ECO=$!
+          sleep 2
+
+          echo "--- probando ${PLAYIT_HOST}:${PLAYIT_PUERTO} de ida y vuelta ---"
+          node -e '
+            const d=require("dgram"), s=d.createSocket("udp4");
+            const host=process.argv[1], puerto=parseInt(process.argv[2],10);
+            s.on("message",()=>{ console.log("VUELVE: el tunel reenvia"); process.exit(0); });
+            const i=setInterval(()=>s.send(Buffer.from("prueba"),puerto,host),1000);
+            setTimeout(()=>{ clearInterval(i); console.log("NO VUELVE: no reenvia"); process.exit(1); },35000);
+          ' "$PLAYIT_HOST" "$PLAYIT_PUERTO"
+          VALE=$?
+
+          kill "$ECO" 2>/dev/null
+          wait "$ECO" 2>/dev/null
+
+          if [ "$VALE" -eq 0 ]; then
+            echo "ok=si" >> "$GITHUB_OUTPUT"
+            echo "host=$PLAYIT_HOST" >> "$GITHUB_OUTPUT"
+            echo "puerto=$PLAYIT_PUERTO" >> "$GITHUB_OUTPUT"
+            echo "La puerta rapida funciona. Queda abierta ADEMAS de portmap."
+          else
+            pkill -f '/tmp/playit' 2>/dev/null
+            echo "::warning::La puerta rapida de playit no reenvia (el fallo de siempre). Se cierra y se sigue con portmap, sin consecuencias."
+            echo "--- log del agente ---"
+            tail -25 /tmp/playit.log 2>/dev/null
+          fi
+
       - name: Levantar el tunel de portmap.io
         env:
           PORTMAP_OVPN: ${{ secrets.PORTMAP_OVPN }}
@@ -470,10 +560,21 @@ jobs:
             echo ""
             echo '## Direccion para entrar'
             echo ""
-            echo "| | |"
-            echo "|---|---|"
-            echo "| Servidor | \`${TUNEL_HOST}\` |"
-            echo "| Puerto | \`${TUNEL_PUERTO}\` |"
+            # Si la puerta rapida ha pasado la prueba, se anuncia ella primero:
+            # es la misma partida, pero por un camino mucho mas corto.
+            if [ "${{ steps.rapida.outputs.ok }}" = "si" ]; then
+              echo "Hay **dos puertas** al mismo servidor. Usa la rapida; la otra queda de reserva."
+              echo ""
+              echo "| | Servidor | Puerto |"
+              echo "|---|---|---|"
+              echo "| **Rapida** | \`${{ steps.rapida.outputs.host }}\` | \`${{ steps.rapida.outputs.puerto }}\` |"
+              echo "| Reserva | \`${TUNEL_HOST}\` | \`${TUNEL_PUERTO}\` |"
+            else
+              echo "| | |"
+              echo "|---|---|"
+              echo "| Servidor | \`${TUNEL_HOST}\` |"
+              echo "| Puerto | \`${TUNEL_PUERTO}\` |"
+            fi
             echo ""
             echo "En Minecraft: **Jugar > Servidores > Anadir servidor**. El puerto va en su casilla aparte, no pegado al nombre."
             echo ""

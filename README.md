@@ -38,6 +38,10 @@ la que guarda el modpack no se ve arrastrada.
 | `PACKS_TOKEN` | **villasori466-hub** | `Contents: read` sobre el repo de los packs |
 | `CHAIN_TOKEN` | **cleoleobel** | `Actions: read and write` sobre este repo |
 | `PORTMAP_OVPN` | — | El fichero `.ovpn` **entero** de la configuración `minecraft` de portmap.io |
+| `PLAYIT_SECRET` | — | *Opcional.* La *secret key* del agente de playit. Sin ella no se intenta la puerta rápida |
+
+Y dos variables más, también opcionales, para la puerta rápida: `PLAYIT_HOST` y
+`PLAYIT_PUERTO`, la dirección pública del túnel de playit y su puerto.
 
 ### El túnel
 
@@ -78,6 +82,22 @@ EE. UU. y cambiar tres cosas:
 
 El workflow no necesita ningún otro cambio: mide y publica el tramo
 runner → boca del túnel en el resumen de cada ejecución.
+
+#### La puerta rápida (opcional, gratis)
+
+playit **sí** deja elegir región gratis. Su agente 1.0.x no sirve aquí por el
+fallo de IPv6 de arriba, pero la rama **0.17.1** es otra generación del programa,
+sigue soportada y no comparte ese código. El workflow la intenta si están puestos
+`PLAYIT_SECRET`, `PLAYIT_HOST` y `PLAYIT_PUERTO`, con un tunel apuntando a
+`127.0.0.1:19132` y **región de EE. UU.** elegida en su panel.
+
+Es **aditiva y sin riesgo**: portmap se levanta igual, pase lo que pase. Si playit
+funciona, el servidor queda con dos puertas y el resumen anuncia la rápida; si no,
+se cierra sola y no se nota.
+
+Y no se fía de lo que diga el agente. La vez anterior decía *tunnels loaded*
+mientras no reenviaba nada, así que la única prueba que se acepta es un paquete
+que salga del runner, dé la vuelta por la dirección pública y vuelva a entrar.
 
 > **No se usa playit.gg.** Su agente 1.0.10 pide los servidores de control a la
 > API, recibe solo objetivos IPv6 y no reintenta por IPv4. Los runners de GitHub
