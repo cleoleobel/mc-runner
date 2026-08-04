@@ -199,9 +199,37 @@ jobs:
           set -euo pipefail
           cd server
           # El runner tiene 4 vCPU y 16 GB: mas holgado que el PC de casa.
+          #
+          # max-threads=3 y no 4, y aqui el motivo cambio aunque el numero no:
+          # antes era "dejar un hilo al sistema" del i5 de casa. Ahora el hilo
+          # que hay que dejar libre es el de OpenVPN, que cifra CADA paquete que
+          # entra y sale del tunel. Si el servidor se come los 4 vCPU, el cifrado
+          # se pone a la cola y eso es latencia anadida a todos los jugadores.
           sed -i 's/^max-threads=.*/max-threads=3/'      server.properties
-          sed -i 's/^view-distance=.*/view-distance=10/' server.properties
+          # 8 en vez de 10: el area de terreno crece con el cuadrado, asi que
+          # son un 36% menos de datos por el tunel. Medido: los jugadores estan
+          # a ~200 ms con 3% de perdida, y el terreno es el grueso del trafico.
+          sed -i 's/^view-distance=.*/view-distance=8/'  server.properties
           sed -i 's/^tick-distance=.*/tick-distance=6/'  server.properties
+
+          # AJUSTES DE LATENCIA, forzados aqui y no solo heredados del repo de
+          # packs. Son los que hacen que se juegue distinto a 200 ms, asi que no
+          # pueden depender de que nadie los borre por descuido del otro lado.
+          # El porque de cada uno esta en el server.properties del repo de packs.
+          fijar() {
+            if grep -q "^$1=" server.properties; then
+              sed -i "s/^$1=.*/$1=$2/" server.properties
+            else
+              echo "$1=$2" >> server.properties
+            fi
+          }
+          fijar compression-algorithm zlib
+          fijar compression-threshold 1
+          fijar player-position-acceptance-threshold 1.0
+          fijar server-authoritative-movement-strict false
+          fijar server-authoritative-dismount-strict false
+          fijar server-authoritative-entity-interactions-strict false
+          fijar client-side-chunk-generation-enabled true
 
           # LISTA DE PERMITIDOS: apagada SIEMPRE y a la fuerza.
           # Si queda encendida con un allowlist.json vacio, el servidor rechaza a
@@ -406,6 +434,33 @@ jobs:
             pgrep -x openvpn >/dev/null 2>&1
           }
 
+          # DE DONDE SALE EL PING. Esto es diagnostico puro y NUNCA debe tumbar
+          # el job: todo va con '|| true'.
+          #
+          # El ping que sufre un jugador son dos tramos sumados:
+          #   jugador -> servidor de portmap   (se mide desde casa)
+          #   portmap -> este runner           (solo se puede medir AQUI)
+          # Sin el segundo no se sabe si la culpa es del tunel o de donde cayo
+          # el runner, y GitHub no deja elegir region. Medido en agosto de 2026:
+          # runner en Virginia, portmap en Londres, jugadores en Santo Domingo.
+          # Resultado, 218 ms: el trafico cruza el Atlantico dos veces para nada.
+          echo "--- de donde ha salido este runner ---"
+          REGION=$(curl -fsS --max-time 10 https://ipinfo.io/json 2>/dev/null \
+                   | tr -d '"{},' | awk -F: '/city|region|country|org/ {gsub(/^ +/,"",$2); print $1"="$2}' \
+                   | paste -sd' ' -) || REGION=""
+          echo "${REGION:-no se ha podido averiguar}"
+
+          # RTT hasta la boca del tunel, por dentro del propio tunel. Es el
+          # segundo tramo. Si portmap no contesta a ICMP queda en blanco, que
+          # tampoco es un problema: es informativo.
+          GWVPN=$(ip -o -4 addr show dev "$TUN" 2>/dev/null \
+                  | grep -o 'peer [0-9.]*' | awk '{print $2}' | head -1)
+          [ -z "$GWVPN" ] && GWVPN=$(echo "$IPVPN" | awk -F. '{print $1"."$2"."$3".1"}')
+          echo "--- RTT de este runner a la boca del tunel ($GWVPN) ---"
+          RTT=$(ping -c 5 -W 2 "$GWVPN" 2>/dev/null | tail -1 \
+                | awk -F'/' '{printf "%.0f ms", $5}') || RTT=""
+          echo "${RTT:-sin respuesta a ICMP}"
+
           # La direccion ya no hay que rascarla de ningun log: en portmap es fija
           # y esta arriba, en las variables del workflow. Se deja bien visible en
           # el resumen de la ejecucion, que sale arriba del todo en la pagina del
@@ -427,6 +482,19 @@ jobs:
             echo "- Para que se vea como debe: **Ajustes > Video > Vibrant Visuals ACTIVADO**. Sin eso las texturas se ven planas."
             echo "- Escribe **\`!guia\`** en el chat para abrir la Cronica del Cataclismo."
             echo "- El servidor se reinicia solo cada ~5h35m. La direccion NO cambia."
+            echo ""
+            echo "<details><summary>De donde sale el ping de esta sesion</summary>"
+            echo ""
+            echo "| Tramo | |"
+            echo "|---|---|"
+            echo "| Runner de GitHub | ${REGION:-desconocido} |"
+            echo "| Runner -> boca del tunel | ${RTT:-sin medir} |"
+            echo ""
+            echo "El ping total de un jugador es ese tramo mas el suyo hasta el"
+            echo "servidor de portmap. GitHub no deja elegir donde cae el runner,"
+            echo "asi que este numero cambia entre sesiones."
+            echo ""
+            echo "</details>"
           } >> "$GITHUB_STEP_SUMMARY"
 
           echo "::notice title=Direccion del servidor::${TUNEL_HOST} puerto ${TUNEL_PUERTO}"

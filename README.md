@@ -52,6 +52,33 @@ Corresponde a la regla `udp://lionel123lave-36820.portmap.host:36820 => 19132`
 de portmap.io. Si algún día se rehace la regla, se cambia en el workflow y en
 ningún sitio más.
 
+#### El relé es el 70% del ping
+
+Medido en agosto de 2026, desde Santo Domingo:
+
+| Tramo | RTT |
+|---|---|
+| Jugador → relé de portmap **en Londres** | 138 ms |
+| Londres → runner (Virginia) | ~80 ms |
+| **Total dentro del juego** | **218 ms**, 3% de pérdida |
+
+El tráfico cruza el Atlántico **dos veces para nada**: de camino a Londres ya
+pasa por Nueva York a 62 ms, y desde Londres vuelve a Virginia. La ruta directa
+serían ~50 ms.
+
+portmap tiene un relé en Nueva York — `usa.portmap.io` → `nyc1.portmap.io`,
+**54 ms desde Santo Domingo con 0% de pérdida** — pero elegir región es función
+de pago (3,99 $/mes ó 29,99 $/año).
+
+**Para mover el relé** basta con rehacer la regla en portmap sobre el servidor de
+EE. UU. y cambiar tres cosas:
+
+1. `PORTMAP_OVPN` → el `.ovpn` nuevo de esa configuración
+2. `TUNEL_HOST` y `TUNEL_PUERTO` en el workflow → los de la regla nueva
+
+El workflow no necesita ningún otro cambio: mide y publica el tramo
+runner → boca del túnel en el resumen de cada ejecución.
+
 > **No se usa playit.gg.** Su agente 1.0.10 pide los servidores de control a la
 > API, recibe solo objetivos IPv6 y no reintenta por IPv4. Los runners de GitHub
 > son solo IPv4, así que la sesión de control nunca se establecía: el agente
