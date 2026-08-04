@@ -204,27 +204,13 @@ jobs:
           # Con --secret a secas el daemon arranca con secret_path=None, intenta
           # abrir un socket IPC para un frontend inexistente y muere con
           # "IPC error: Failed to bind to socket".
-          arrancar_playit() {
-            SECRET_KEY="$PLAYIT_SECRET" nohup ./playit \
-              --socket-path /tmp/playit/agent.sock > playit.log 2>&1 &
-            PLAYIT_PID=$!
-          }
-
-          arrancar_playit
-          sleep 10
-
-          # Plan B por si esta version no leyera la variable de entorno
-          if ! kill -0 $PLAYIT_PID 2>/dev/null; then
-            echo "SECRET_KEY no funciono. Log:"; cat playit.log
-            echo "Reintentando con fichero de secreto..."
-            umask 077
-            printf 'secret_key = "%s"\n' "$PLAYIT_SECRET" > /tmp/playit.toml
-            SECRET_KEY="$PLAYIT_SECRET" nohup ./playit \
-              --secret-path /tmp/playit.toml \
-              --socket-path /tmp/playit/agent.sock > playit.log 2>&1 &
-            PLAYIT_PID=$!
-            sleep 10
-          fi
+          # EXACTAMENTE como el ejemplo oficial: solo la variable de entorno.
+          # Nada de --socket-path: esa opcion es para el IPC con la interfaz
+          # grafica y puede dejar al agente esperando un frontend en vez de
+          # servir el tunel.
+          SECRET_KEY="$PLAYIT_SECRET" nohup ./playit > playit.log 2>&1 &
+          PLAYIT_PID=$!
+          sleep 15
 
           # Esperar a que el agente negocie el tunel
           for i in $(seq 1 12); do
@@ -281,6 +267,8 @@ jobs:
 
       - name: Arrancar el servidor
         id: servidor
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           MIN="${{ github.event.inputs.minutos || '335' }}"
@@ -326,6 +314,27 @@ jobs:
 
           # Comprobar que esta escuchando en UDP 19132, que es a donde apunta playit
           ss -ulnp 2>/dev/null | grep -E '19132' || echo "AVISO: no veo el puerto 19132 escuchando"
+
+          # DIAGNOSTICO TEMPRANO: se publica con el servidor YA corriendo, para
+          # poder ver el estado del tunel sin esperar 5 horas a que acabe el job.
+          {
+            echo "=== EN VIVO - ejecucion ${{ github.run_number }} - $(date -u) ==="
+            echo
+            echo "--- puertos UDP ---"; ss -ulnp 2>/dev/null | head -20
+            echo
+            echo "--- ultimas lineas del servidor ---"; tail -25 /tmp/bds.log
+            echo
+            echo "--- agente playit ---"; tail -40 ../playit.log 2>/dev/null || tail -40 playit.log 2>/dev/null || echo "no encontrado"
+            echo
+            echo "--- prueba local: responde el servidor en 127.0.0.1:19132? ---"
+            timeout 5 bash -c 'printf "\x01" > /dev/udp/127.0.0.1/19132' 2>&1 && echo "puerto alcanzable" || echo "no alcanzable"
+          } > /tmp/envivo.txt 2>&1
+
+          gh release view envivo --repo "${{ github.repository }}" >/dev/null 2>&1 \
+            || gh release create envivo --repo "${{ github.repository }}" \
+                 --title "Estado en vivo" --notes "Estado publicado con el servidor corriendo. Sin secretos."
+          gh release upload envivo /tmp/envivo.txt --repo "${{ github.repository }}" --clobber || true
+          echo "Diagnostico en vivo publicado"
 
           echo "Servidor arrancado (PID $BDS). Correra $MIN minutos."
           # Aviso a los jugadores 5 minutos antes del reinicio
