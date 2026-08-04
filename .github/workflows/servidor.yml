@@ -335,263 +335,123 @@ jobs:
           cp packs/_world_config/world_behavior_packs.json "server/worlds/${MUNDO}/"
           cp packs/_world_config/world_resource_packs.json "server/worlds/${MUNDO}/"
 
-      # PUERTA RAPIDA, OPCIONAL Y ADITIVA.
+      # RED DIRECTA CON ZEROTIER. Sustituye al intento de playit, que esta
+      # descartado con datos tras cinco ejecuciones (ver el README).
       #
-      # El rele gratuito de portmap esta en Londres y los jugadores en Santo
-      # Domingo: 218 ms medidos, cruzando el Atlantico dos veces, porque el
-      # runner cae en Virginia. Elegir region en portmap es de pago. playit si
-      # deja elegirla gratis, pero su agente 1.0.x no sirve aqui: pide los
-      # destinos de control a la API, recibe solo IPv6 y no reintenta por IPv4
-      # (playit-agent#194, abierto). Los runners son solo IPv4.
+      # La idea es distinta: aqui NO hay rele. El jugador y el runner se meten
+      # en la misma red virtual y se hablan directamente, asi que el trafico
+      # deja de dar la vuelta por Londres. Ese rodeo es el 70% del ping.
       #
-      # La version 0.17.1 es otra generacion del programa, sigue soportada por
-      # upstream y NO comparte ese codigo. Merece la pena intentarlo, pero sin
-      # jugarse la partida: este paso NO sustituye a portmap. Si funciona, el
-      # servidor queda con DOS puertas abiertas a la vez y se anuncia la rapida;
-      # si no, se cierra y todo sigue exactamente igual que antes.
+      # El precio: cada jugador instala ZeroTier una vez y se une a la red. A
+      # cambio no necesitan crearse cuenta, solo el ID de la red.
       #
-      # Y "funciona" aqui no significa que el agente lo diga. La vez anterior
-      # decia "tunnels loaded" mientras no reenviaba ni un paquete. Lo unico que
-      # se acepta como prueba es un paquete que salga de este runner, de la
-      # vuelta por la direccion publica y vuelva a entrar.
+      # POR QUE ZEROTIER Y NO TAILSCALE: Tailscale atraviesa NAT algo mejor,
+      # pero su plan gratuito son 3 usuarios y aqui sois 4 o mas. ZeroTier da
+      # 25 dispositivos en una red y no gasta usuarios.
       #
-      # Para activarla hacen falta las tres cosas; si falta una, no se intenta:
-      #   secreto  PLAYIT_SECRET   la secret key del agente
-      #   variable PLAYIT_HOST     direccion publica del tunel
-      #   variable PLAYIT_PUERTO   su puerto
-      - name: Puerta rapida opcional (playit, no sustituye a portmap)
-        id: rapida
+      # QUE HACE FALTA (si falta algo, no se intenta y no pasa nada):
+      #   variable ZT_RED     el ID de 16 digitos de la red
+      #   variable ZT_IP      la IP fija que tendra el servidor, ej 10.147.20.10
+      #   secreto  ZT_TOKEN   token de la API de ZeroTier Central
+      #
+      # EL TOKEN NO ES UN CAPRICHO. Cada sesion arranca en una maquina nueva,
+      # que para ZeroTier es un dispositivo desconocido y entra sin autorizar.
+      # Sin la API habria que ir a autorizarlo A MANO cada 5 h y media. Con
+      # ella, el runner se autoriza solo Y se pone SIEMPRE LA MISMA IP, que es
+      # lo que permite a los jugadores guardar el servidor una vez y olvidarse.
+      - name: Red directa opcional (ZeroTier)
+        id: malla
         env:
-          PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
-          PLAYIT_HOST: ${{ vars.PLAYIT_HOST }}
-          PLAYIT_PUERTO: ${{ vars.PLAYIT_PUERTO }}
+          ZT_RED: ${{ vars.ZT_RED }}
+          ZT_IP: ${{ vars.ZT_IP }}
+          ZT_TOKEN: ${{ secrets.ZT_TOKEN }}
         run: |
-          # Sin 'set -e': este paso es un extra y no puede tumbar la sesion.
+          # Sin 'set -e': esto es un extra y no puede tumbar la sesion.
           set +e
           echo "ok=no" >> "$GITHUB_OUTPUT"
 
-          if [ -z "${PLAYIT_SECRET:-}" ] || [ -z "${PLAYIT_HOST:-}" ] || [ -z "${PLAYIT_PUERTO:-}" ]; then
-            echo "Puerta rapida no configurada. Se usa solo portmap, como siempre."
+          if [ -z "${ZT_RED:-}" ] || [ -z "${ZT_IP:-}" ] || [ -z "${ZT_TOKEN:-}" ]; then
+            echo "Red directa no configurada. Se juega por el tunel de portmap, como siempre."
             exit 0
           fi
 
-          echo "--- bajando el agente 0.17.1 ---"
-          curl -fsSL -o /tmp/playit \
-            https://github.com/playit-cloud/playit-agent/releases/download/v0.17.1/playit-linux-amd64 \
-            && chmod +x /tmp/playit
-          if [ ! -x /tmp/playit ]; then
-            echo "::warning::No se ha podido bajar el agente de playit. Se sigue solo con portmap."
+          echo "--- instalando ZeroTier ---"
+          # Instalador oficial del proyecto: comprueba su propia firma GPG.
+          curl -s https://install.zerotier.com | sudo bash > /tmp/zt_install.log 2>&1
+          if ! command -v zerotier-cli >/dev/null 2>&1; then
+            echo "::warning::No se ha podido instalar ZeroTier. Se sigue solo con portmap."
+            tail -15 /tmp/zt_install.log 2>/dev/null
             exit 0
           fi
 
-          # DOS TRAMPAS DE LA 0.17.1, comprobadas en su codigo fuente y no
-          # adivinadas (packages/agent_cli/src/playit_secret.rs y main.rs):
-          #
-          # 1. Lee la variable PLAYIT_SECRET. NO lee SECRET_KEY, que es lo que
-          #    documenta la web para la rama 1.0.x y para Docker. Con el nombre
-          #    equivocado el agente ignora el secreto y se pone a esperar un
-          #    registro interactivo que aqui no va a llegar nunca.
-          # 2. Sin --stdout arranca una interfaz de terminal. En un runner no
-          #    hay terminal.
-          #
-          # PLAYIT_SECRET ya viene del bloque env: de este paso, con ese nombre
-          # exacto, asi que el agente la coge tal cual.
-          # DESPEGARLO DEL PASO, o no sobrevive. Esto se aprendio en vivo: en la
-          # ejecucion 27 el agente conecto (playit registro 58 ms de latencia en
-          # su panel y la prueba de ida y vuelta paso), y para cuando arranco el
-          # servidor ya figuraba "Not connected". Un 'nohup ... &' a secas deja
-          # el proceso colgando del shell del paso y con la entrada estandar
-          # atada a el; al terminar el paso se queda sin terminal y se va.
-          #
-          # setsid le da sesion propia, </dev/null le quita la entrada y disown
-          # lo saca de la tabla de trabajos del shell. Asi sobrevive al paso,
-          # igual que hace OpenVPN con su --daemon.
-          # SINIPV6 lo define el paso de mas abajo: o la ruta del interceptor, o
-          # vacio si no se pudo. Con env "" delante no pasa nada, se ignora.
-          arrancar_agente() {
-            setsid nohup env ${SINIPV6:+LD_PRELOAD=$SINIPV6} /tmp/playit --stdout \
-              < /dev/null >> /tmp/playit.log 2>&1 &
-            disown 2>/dev/null || true
-          }
-          # CEGAR AL AGENTE PARA IPv6, INTERCEPTANDO socket(). Lee esto antes de
-          # tocarlo, que aqui ya se fallo una vez.
-          #
-          # El origen esta en el codigo del agente, no en una suposicion
-          # (agent_core/src/agent_control/mod.rs, DualStackUdpSocket::new):
-          #
-          #   let ip4 = UdpSocket::bind(...IPv4 UNSPECIFIED...).await?;
-          #   let ip6 = UdpSocket::bind(...IPv6 UNSPECIFIED...).await.ok();
-          #
-          # Abre DOS sockets y le anuncia a playit los dos puertos. El .ok() es
-          # la trampa: en Linux ese bind de IPv6 funciona aunque la maquina no
-          # tenga IPv6 encaminable, porque existe el loopback ::1. El agente
-          # acaba diciendo "tambien me alcanzas por IPv6" y es mentira: los
-          # runners de GitHub son solo IPv4.
-          #
-          # playit entonces manda la sesion UDP a esa IPv6, no llega nunca, el
-          # agente vuelve a pedir autenticacion, y se queda en bucle. En el log
-          # se ve clavado, cada 10 s:
-          #   "udp channel requires auth, sent auth request"
-          #   "udp session details received"
-          # con "2 tunnels registered" y sin reenviar un solo paquete. Esa es la
-          # misma familia del bug que dejo inservible la rama 1.0.x.
-          #
-          # LO QUE NO FUNCIONO, para que nadie lo repita: apagar IPv6 por sysctl
-          # (net.ipv6.conf.{all,default,lo}.disable_ipv6=1). Se probo en la
-          # ejecucion 30 y el bucle siguio EXACTAMENTE igual. El motivo es que
-          # disable_ipv6 quita direcciones IPv6 de las interfaces, pero NO impide
-          # crear un socket AF_INET6 ni hacer bind al comodin [::]:0. El .ok()
-          # seguia devolviendo Some y el agente seguia anunciando IPv6.
-          #
-          # LO QUE SI ATACA ESA LINEA: interceptar la llamada socket() de la libc
-          # con LD_PRELOAD y devolver error para AF_INET6. Entonces el bind falla
-          # de verdad, .ok() da None, y el agente solo puede anunciar IPv4.
-          # Solo afecta al proceso del agente: no se toca la red del runner, asi
-          # que no se arriesga el camino a GitHub ni el guardado del mundo.
-          echo "--- compilando el interceptor de sockets IPv6 ---"
-          {
-            echo '#define _GNU_SOURCE'
-            echo '#include <sys/socket.h>'
-            echo '#include <errno.h>'
-            echo '#include <dlfcn.h>'
-            echo 'typedef int (*real_socket_t)(int, int, int);'
-            echo 'static real_socket_t real_socket = NULL;'
-            echo 'int socket(int domain, int type, int protocol) {'
-            echo '    if (domain == AF_INET6) { errno = EAFNOSUPPORT; return -1; }'
-            echo '    if (!real_socket) real_socket = (real_socket_t)dlsym(RTLD_NEXT, "socket");'
-            echo '    return real_socket(domain, type, protocol);'
-            echo '}'
-          } > /tmp/sin_ipv6.c
-          SINIPV6=""
-          if gcc -shared -fPIC -o /tmp/sin_ipv6.so /tmp/sin_ipv6.c -ldl 2>/tmp/gcc.log; then
-            # COMPROBARLO ANTES DE FIARSE. Que compile no significa que
-            # intercepte: se prueba a abrir un socket IPv6 con el interceptor
-            # puesto y tiene que FALLAR. Si no falla, no sirve de nada cargarlo.
-            if LD_PRELOAD=/tmp/sin_ipv6.so node -e '
-              const d=require("dgram");
-              const s=d.createSocket("udp6");
-              s.on("error",()=>{ console.log("BIEN: el socket IPv6 ha fallado"); process.exit(0); });
-              s.bind(0,()=>{ console.log("MAL: el socket IPv6 sigue abriendose"); process.exit(1); });
-            ' 2>/dev/null | grep -q BIEN; then
-              SINIPV6="/tmp/sin_ipv6.so"
-              echo "OK: el interceptor funciona, el agente ira solo por IPv4"
-            else
-              echo "::warning::El interceptor compila pero no bloquea IPv6. Se arranca el agente sin el."
-            fi
-          else
-            echo "::warning::No se ha podido compilar el interceptor de IPv6. Se arranca el agente sin el."
-            cat /tmp/gcc.log 2>/dev/null
-          fi
+          sudo systemctl start zerotier-one 2>/dev/null
+          sleep 5
 
-          arrancar_agente
-          sleep 20
-
-          # Si el secreto no vale, el agente se muere aqui en vez de quedarse
-          # colgado. Merece la pena decirlo claro antes de perder 35 s probando.
-          if ! pgrep -f '/tmp/playit' >/dev/null 2>&1; then
-            echo "::warning::El agente de playit no ha seguido vivo. Suele ser un PLAYIT_SECRET invalido o caducado. Se sigue con portmap."
-            tail -25 /tmp/playit.log 2>/dev/null
+          NODO=$(sudo zerotier-cli info 2>/dev/null | awk '{print $3}')
+          if [ -z "$NODO" ]; then
+            echo "::warning::ZeroTier no ha arrancado. Se sigue solo con portmap."
             exit 0
           fi
+          echo "nodo de este runner: $NODO"
 
-          # ECO TEMPORAL en el puerto del juego. El servidor Bedrock aun no ha
-          # arrancado, asi que 19132 esta libre: se pone un eco que devuelve lo
-          # que le llegue, se prueba la direccion publica desde aqui mismo y se
-          # quita. Si el paquete vuelve, el tunel reenvia DE VERDAD.
-          node -e '
-            const d=require("dgram"), s=d.createSocket("udp4");
-            s.on("message",(m,r)=>s.send(m,r.port,r.address));
-            s.bind(19132);
-            setTimeout(()=>process.exit(0), 180000);
-          ' > /tmp/eco.log 2>&1 &
-          ECO=$!
-          sleep 2
+          sudo zerotier-cli join "$ZT_RED" >/dev/null 2>&1
+          sleep 5
 
-          # EN RONDAS, no en un solo intento largo. En la ejecucion 28 el agente
-          # arranco bien y aun asi el sondeo agoto sus 35 s. Un tunel recien
-          # creado (o al que le acaban de cambiar la region) puede tardar en
-          # quedar servido, asi que se le dan tres oportunidades separadas en
-          # vez de una ventana seguida: si tarda, se le espera; si no va a ir,
-          # se sabe igual.
-          VALE=1
-          for ronda in 1 2 3; do
-            echo "--- ronda $ronda: probando ${PLAYIT_HOST}:${PLAYIT_PUERTO} de ida y vuelta ---"
-            if node -e '
-              const d=require("dgram"), s=d.createSocket("udp4");
-              const host=process.argv[1], puerto=parseInt(process.argv[2],10);
-              s.on("message",()=>{ process.exit(0); });
-              const i=setInterval(()=>s.send(Buffer.from("prueba"),puerto,host),1000);
-              setTimeout(()=>{ clearInterval(i); process.exit(1); },25000);
-            ' "$PLAYIT_HOST" "$PLAYIT_PUERTO"; then
-              echo "VUELVE: el tunel reenvia"
-              VALE=0
-              break
-            fi
-            echo "sin respuesta en esta ronda"
-            sleep 10
+          # AUTORIZARSE Y RESERVAR LA IP, via API. Las dos cosas en la misma
+          # llamada: authorized lo mete en la red, ipAssignments le clava
+          # siempre la misma direccion.
+          echo "--- autorizando este runner en la red y fijando $ZT_IP ---"
+          COD=$(curl -s -o /tmp/zt_api.json -w "%{http_code}" \
+            -X POST "https://api.zerotier.com/api/v1/network/${ZT_RED}/member/${NODO}" \
+            -H "Authorization: token ${ZT_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"name\":\"runner-${{ github.run_number }}\",\"description\":\"servidor bedrock, sesion ${{ github.run_number }}\",\"config\":{\"authorized\":true,\"ipAssignments\":[\"${ZT_IP}\"]}}")
+          echo "HTTP $COD"
+          case "$COD" in
+            200) echo "OK: autorizado" ;;
+            401|403) echo "::warning::El ZT_TOKEN no vale o no tiene permisos. Se sigue solo con portmap."; exit 0 ;;
+            404) echo "::warning::No existe la red $ZT_RED (o el token no la ve). Se sigue solo con portmap."; exit 0 ;;
+            *)   echo "::warning::La API de ZeroTier ha respondido $COD. Se intenta seguir igualmente." ;;
+          esac
+
+          # ESPERAR A LA IP DE VERDAD. Que la API diga que si no significa que
+          # la interfaz ya la tenga: el nodo tiene que recibir la configuracion.
+          echo "--- esperando a que la interfaz coja la IP ---"
+          TIENE=0
+          for i in $(seq 1 20); do
+            if ip -o -4 addr show 2>/dev/null | grep -q "$ZT_IP"; then TIENE=1; break; fi
+            sleep 3
           done
 
-          kill "$ECO" 2>/dev/null
-          wait "$ECO" 2>/dev/null
+          if [ "$TIENE" -ne 1 ]; then
+            echo "::warning::ZeroTier no ha llegado a coger $ZT_IP. Se sigue solo con portmap."
+            sudo zerotier-cli listnetworks 2>/dev/null
+            exit 0
+          fi
 
-          # EL LOG DEL AGENTE, FILTRADO Y PUBLICO. Esta es la pieza que ha
-          # faltado en los dos intentos anteriores: sin ella, saber por que
-          # falla exige los logs del job, que desde fuera dan 403, y solo queda
-          # suponer. Se filtra cualquier cadena larga de letras y numeros por si
-          # el agente imprimiera el secreto: esto acaba siendo publico.
-          tail -40 /tmp/playit.log 2>/dev/null \
-            | sed -E 's/[A-Za-z0-9_-]{24,}/[FILTRADO]/g' > /tmp/playit_publico.txt
+          echo "ok=si" >> "$GITHUB_OUTPUT"
+          echo "ip=$ZT_IP" >> "$GITHUB_OUTPUT"
+          echo "$ZT_IP" > /tmp/zt_ip.txt
+          echo "OK: el servidor esta en la red directa con la IP $ZT_IP"
+          ip -o -4 addr show | grep "$ZT_IP"
 
-          # La direccion se deja en ficheros para que el publicador de mas abajo
-          # (otro paso) pueda reintentar la prueba contra el servidor real.
-          # OJO SI TOCAS ESTO: no se puede usar un here-document para dejar un
-          # script en /tmp. Dentro de un bloque 'run: |' de YAML, la linea del
-          # terminador iria en la columna 0 y eso CIERRA el bloque: el workflow
-          # deja de ser valido. Por eso la sonda va escrita en linea alli donde
-          # se usa, aunque se repita.
-          echo "$PLAYIT_HOST"   > /tmp/playit_host.txt
-          echo "$PLAYIT_PUERTO" > /tmp/playit_puerto.txt
-
-          # VIGILANTE, y ahora SIEMPRE, haya pasado la prueba o no. Que el
-          # agente siga vivo es util en los dos casos: si paso, para que aguante
-          # cinco horas y media (en la ejecucion 27 se cayo a los pocos
-          # minutos); si no paso, para que el publicador pueda reintentarlo
-          # contra el servidor real. Deja el estado en un fichero que acaba en
-          # la release publica: sin eso, saber si el agente sigue vivo exige
-          # leer los logs del job, y esos piden permisos de administrador.
+          # Estado para el fichero publico, igual que se hace con el tunel: sin
+          # esto, saber si la red sigue en pie exige los logs del job, y esos
+          # dan 403 desde fuera.
           (
             set +e
             while true; do
-              if pgrep -f '/tmp/playit' >/dev/null 2>&1; then
-                echo "$(date -u +%H:%M:%S) agente vivo" > /tmp/playit_estado.txt
+              if ip -o -4 addr show 2>/dev/null | grep -q "$ZT_IP"; then
+                echo "$(date -u +%H:%M:%S) red directa OK en $ZT_IP" > /tmp/zt_estado.txt
               else
-                echo "$(date -u +%H:%M:%S) agente CAIDO, relanzando" > /tmp/playit_estado.txt
-                arrancar_agente
-                sleep 15
+                echo "$(date -u +%H:%M:%S) red directa CAIDA" > /tmp/zt_estado.txt
+                sudo zerotier-cli join "$ZT_RED" >/dev/null 2>&1
               fi
               sleep 30
             done
           ) > /dev/null 2>&1 &
           disown 2>/dev/null || true
 
-          if [ "$VALE" -eq 0 ]; then
-            echo "ok=si" >> "$GITHUB_OUTPUT"
-            echo "host=$PLAYIT_HOST" >> "$GITHUB_OUTPUT"
-            echo "puerto=$PLAYIT_PUERTO" >> "$GITHUB_OUTPUT"
-            echo "La puerta rapida funciona. Queda abierta ADEMAS de portmap."
-          else
-            # NO se mata el agente, y esto es un cambio con motivo. Antes se
-            # mataba aqui, y con eso se perdia la unica posibilidad que
-            # quedaba: este sondeo se hace contra un ECO, minutos antes de que
-            # exista el servidor de verdad. Que falle ahora no demuestra que
-            # vaya a fallar luego. Se deja vivo con su vigilante y el
-            # publicador de mas abajo lo vuelve a probar cada minuto, ya
-            # contra el servidor real, y lo deja escrito en la release
-            # publica. Cuesta cero y puede ganar la partida.
-            echo "::warning::La puerta rapida no ha reenviado en la prueba temprana. Se deja el agente vivo y se reintenta contra el servidor real; mira 'puerta rapida' en el fichero del tunel. Se sigue con portmap igualmente."
-            echo "--- log del agente ---"
-            tail -25 /tmp/playit.log 2>/dev/null
-          fi
 
       - name: Levantar el tunel de portmap.io
         env:
@@ -728,15 +588,18 @@ jobs:
             echo ""
             echo '## Direccion para entrar'
             echo ""
-            # Si la puerta rapida ha pasado la prueba, se anuncia ella primero:
-            # es la misma partida, pero por un camino mucho mas corto.
-            if [ "${{ steps.rapida.outputs.ok }}" = "si" ]; then
-              echo "Hay **dos puertas** al mismo servidor. Usa la rapida; la otra queda de reserva."
+            # Si la red directa esta en pie se anuncia ella primero: es la misma
+            # partida, pero sin rele por medio. El tunel queda de reserva para
+            # quien no tenga ZeroTier instalado.
+            if [ "${{ steps.malla.outputs.ok }}" = "si" ]; then
+              echo "Hay **dos formas de entrar** al mismo servidor."
               echo ""
-              echo "| | Servidor | Puerto |"
-              echo "|---|---|---|"
-              echo "| **Rapida** | \`${{ steps.rapida.outputs.host }}\` | \`${{ steps.rapida.outputs.puerto }}\` |"
-              echo "| Reserva | \`${TUNEL_HOST}\` | \`${TUNEL_PUERTO}\` |"
+              echo "| | Servidor | Puerto | Requiere |"
+              echo "|---|---|---|---|"
+              echo "| **Directa (rapida)** | \`${{ steps.malla.outputs.ip }}\` | \`19132\` | ZeroTier instalado y unido a la red |"
+              echo "| Tunel (reserva) | \`${TUNEL_HOST}\` | \`${TUNEL_PUERTO}\` | nada |"
+              echo ""
+              echo "La directa evita el rele de Londres, que es el 70% del ping."
             else
               echo "| | |"
               echo "|---|---|"
@@ -797,36 +660,30 @@ jobs:
                 echo "--- sigue vivo el openvpn? ---"
                 if vivo; then echo "SI"; else echo "NO: se ha muerto"; fi
                 echo
-                echo "--- puerta rapida (playit) ---"
-                if [ -f /tmp/playit_host.txt ]; then
-                  PH=$(cat /tmp/playit_host.txt)
-                  PP=$(cat /tmp/playit_puerto.txt)
-                  echo "direccion: ${PH}:${PP}"
-                  echo "prueba temprana (contra un eco): ${{ steps.rapida.outputs.ok }}"
-                  if pgrep -f '/tmp/playit' >/dev/null 2>&1; then
-                    echo "agente: VIVO"
-                  else
-                    echo "agente: CAIDO"
-                  fi
-                  cat /tmp/playit_estado.txt 2>/dev/null
-                  # LA PRUEBA QUE VALE: contra el servidor Bedrock ya arrancado.
-                  # La temprana se hace contra un eco y minutos antes, asi que
-                  # puede mentir en las dos direcciones.
+                echo "--- red directa (ZeroTier) ---"
+                if [ -f /tmp/zt_ip.txt ]; then
+                  ZTIP=$(cat /tmp/zt_ip.txt)
+                  echo "direccion directa: ${ZTIP}:19132"
+                  cat /tmp/zt_estado.txt 2>/dev/null
+                  echo "miembros que ve este nodo:"
+                  sudo zerotier-cli listnetworks 2>/dev/null | tail -3 || echo "(zerotier-cli no responde)"
+                  # Que el servidor conteste EN esa IP. Se pregunta desde el
+                  # propio runner: no prueba el camino del jugador, pero si que
+                  # el Bedrock esta sirviendo por la interfaz de ZeroTier, que es
+                  # la mitad que depende de nosotros.
                   if node -e '
                     const d=require("dgram"), s=d.createSocket("udp4");
-                    s.on("message",()=>process.exit(0));
-                    const i=setInterval(()=>s.send(Buffer.from("prueba"),parseInt(process.argv[2],10),process.argv[1]),1000);
+                    const MAGIC=Buffer.from("00ffff00fefefefefdfdfdfd12345678","hex");
+                    const b=Buffer.alloc(33); b.writeUInt8(0x01,0);
+                    b.writeBigInt64BE(BigInt(Date.now()),1); MAGIC.copy(b,9);
+                    s.on("message",(m)=>{ if(m[0]===0x1c) process.exit(0); });
+                    const i=setInterval(()=>s.send(b,19132,process.argv[1]),1000);
                     setTimeout(()=>{ clearInterval(i); process.exit(1); },8000);
-                  ' "$PH" "$PP" >/dev/null 2>&1; then
-                    echo "prueba REAL contra el servidor: FUNCIONA -> usad esta direccion"
+                  ' "$ZTIP" >/dev/null 2>&1; then
+                    echo "el servidor RESPONDE en la IP directa"
                   else
-                    echo "prueba REAL contra el servidor: no reenvia"
+                    echo "el servidor no responde todavia en la IP directa (puede seguir cargando packs)"
                   fi
-                  echo
-                  echo "--- log del agente de playit (filtrado) ---"
-                  tail -40 /tmp/playit.log 2>/dev/null \
-                    | sed -E 's/[A-Za-z0-9_-]{24,}/[FILTRADO]/g' \
-                    | tail -25 || echo "(sin log)"
                 else
                   echo "no configurada en esta sesion"
                 fi
