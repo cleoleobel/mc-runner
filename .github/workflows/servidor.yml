@@ -236,8 +236,35 @@ jobs:
           # arrancado. Asi ademas el servidor nunca ve EOF en su stdin.
           mkfifo /tmp/bds_in
           exec 3<> /tmp/bds_in
-          LD_LIBRARY_PATH=. ./bedrock_server < /tmp/bds_in &
+          LD_LIBRARY_PATH=. ./bedrock_server < /tmp/bds_in > /tmp/bds.log 2>&1 &
           BDS=$!
+
+          # COMPROBAR QUE ARRANCA DE VERDAD.
+          # Antes se dormia 335 min sin mirar: si el binario petaba, el paso
+          # seguia "en curso" y parecia que todo iba bien, pero no habia servidor.
+          echo "Esperando a que el servidor este listo..."
+          listo=0
+          for i in $(seq 1 60); do
+            sleep 5
+            if grep -q "Server started" /tmp/bds.log 2>/dev/null; then listo=1; break; fi
+            if ! kill -0 $BDS 2>/dev/null; then
+              echo "::error::El servidor murio durante el arranque."
+              echo "----- salida del servidor -----"; cat /tmp/bds.log; exit 1
+            fi
+          done
+
+          echo "----- primeras lineas del servidor -----"
+          head -40 /tmp/bds.log || true
+
+          if [ "$listo" -ne 1 ]; then
+            echo "::error::El servidor no llego a decir 'Server started' en 5 minutos."
+            echo "----- salida completa -----"; cat /tmp/bds.log; exit 1
+          fi
+
+          echo "::notice title=Servidor listo::Aceptando conexiones"
+
+          # Comprobar que esta escuchando en UDP 19132, que es a donde apunta playit
+          ss -ulnp 2>/dev/null | grep -E '19132' || echo "AVISO: no veo el puerto 19132 escuchando"
 
           echo "Servidor arrancado (PID $BDS). Correra $MIN minutos."
           # Aviso a los jugadores 5 minutos antes del reinicio
@@ -255,6 +282,44 @@ jobs:
           echo 'stop' >&3
           wait $BDS || true
           echo "Servidor detenido limpiamente"
+
+      # Los logs de Actions solo los ve quien tiene permisos de admin en el repo.
+      # Esto publica un diagnostico como asset de una release, que en un repo
+      # publico se puede leer sin autenticarse. Sin secretos dentro.
+      - name: Publicar diagnostico
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          D=/tmp/diagnostico.txt
+          {
+            echo "=== EJECUCION ${{ github.run_number }}  $(date -u) ==="
+            echo
+            echo "--- sistema ---"
+            uname -a; echo; cat /etc/os-release | head -3
+            echo
+            echo "--- servidor bedrock ---"
+            if [ -f /tmp/bds.log ]; then
+              echo "(ultimas 60 lineas)"; tail -60 /tmp/bds.log
+            else
+              echo "NO existe /tmp/bds.log: el servidor ni se lanzo"
+            fi
+            echo
+            echo "--- librerias que le faltan al binario ---"
+            ldd server/bedrock_server 2>/dev/null | grep -i "not found" || echo "(ninguna)"
+            echo
+            echo "--- agente playit ---"
+            if [ -f playit.log ]; then tail -40 playit.log; else echo "NO existe playit.log"; fi
+            echo
+            echo "--- puertos UDP escuchando ---"
+            ss -ulnp 2>/dev/null || echo "(ss no disponible)"
+          } > "$D" 2>&1
+
+          gh release view diagnostico --repo "${{ github.repository }}" >/dev/null 2>&1 \
+            || gh release create diagnostico --repo "${{ github.repository }}" \
+                 --title "Diagnostico" --notes "Ultimo diagnostico automatico. No contiene secretos."
+          gh release upload diagnostico "$D" --repo "${{ github.repository }}" --clobber
+          echo "Diagnostico publicado"
 
       - name: Guardar el mundo
         if: always()
