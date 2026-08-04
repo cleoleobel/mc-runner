@@ -39,17 +39,27 @@ permissions:
   contents: write
 
 env:
-  # 1.26.33.2 A PROPOSITO, no la ultima.
+  # ESTA VERSION Y LA DE LOS JUGADORES VAN A LA PAR. No es opcional.
   # Con el servidor en 1.26.36 y el cliente en 1.26.33, el cliente era
   # rechazado en el saludo inicial con un mensaje que despista mucho, "You are
   # not whitelisted on this server!", aun con allow-list=false confirmado en el
   # servidor. La pista buena fue que el servidor NO anotaba el intento en su
   # registro: el corte ocurria antes de considerarlo siquiera una conexion.
-  # Se fija a la version del cliente. De la serie 1.26.33 se elige la .2, que es
-  # la ultima y por tanto la mas asentada; la .1 tambien existe.
-  # Si algun dia hay que actualizar, hay que subir esto Y que los jugadores
-  # actualicen su Minecraft: las dos cosas tienen que ir a la par.
-  BDS_VERSION: "1.26.33.2"
+  # O sea: si subes esto, TODOS tienen que actualizar su Minecraft, y si alguien
+  # no puede, hay que bajarlo aqui otra vez.
+  #
+  # 1.26.40.8 es la ultima estable publicada por Mojang (la .8 de esa serie).
+  # Al cambiarla, el mundo guardado queda marcado con la version anterior, asi
+  # que el paso de restaurar lo aparta a la release 'mundo-anterior' y genera
+  # uno nuevo. Eso es intencionado: abrir un mundo con otra version es como se
+  # corrompen las partidas.
+  #
+  # RIESGO CONOCIDO AL SUBIR A 1.26.40: dos addons siguen en la Script API 1.x
+  # -stonetombs_bp (1.15.0) y horde_nights_bp (1.9.0)-, que Mojang lleva tiempo
+  # retirando. Los otros seis ya van por la 2.x y no corren peligro. Si las
+  # lapidas o las hordas dejan de funcionar, mirar content_log.txt: sera eso, y
+  # se arregla volviendo a 1.26.33.2 o actualizando esos dos packs.
+  BDS_VERSION: "1.26.40.8"
   REPO_PACKS: ${{ vars.REPO_PACKS }}     # ej: villasori466-hub/server-minecraft-bedrock
   MUNDO: CronicaDelCataclismo
   # Direccion fija del tunel de portmap.io. Corresponde a la regla
@@ -648,7 +658,7 @@ jobs:
             echo ""
             echo "En Minecraft: **Jugar > Servidores > Anadir servidor**. El puerto va en su casilla aparte, no pegado al nombre."
             echo ""
-            echo "- Minecraft **1.26.33** exacto | 9 addons + capa visual | 6 jugadores"
+            echo "- Necesitas Minecraft **1.26.40** | 9 addons + capa visual | 6 jugadores"
             echo "- La primera conexion descarga bastantes MB de packs: parece colgado pero no lo esta."
             echo "- Para que se vea como debe: **Ajustes > Video > Vibrant Visuals ACTIVADO**. Sin eso las texturas se ven planas."
             echo "- Escribe **\`!guia\`** en el chat para abrir la Cronica del Cataclismo."
