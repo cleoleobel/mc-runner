@@ -45,10 +45,59 @@ jobs:
       - name: Descargar este repo
         uses: actions/checkout@v4
 
+      # Falla pronto y con un mensaje util. Sin esto, un secreto mal puesto
+      # revienta en el checkout con un "repository not found" que no dice nada.
+      - name: Comprobar configuracion
+        env:
+          PACKS_TOKEN: ${{ secrets.PACKS_TOKEN }}
+          CHAIN_TOKEN: ${{ secrets.CHAIN_TOKEN }}
+          PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
+          REPO_PACKS: ${{ vars.REPO_PACKS }}
+        run: |
+          fallo=0
+
+          echo "--- Variable REPO_PACKS ---"
+          if [ -z "${REPO_PACKS:-}" ]; then
+            echo "::error::Falta la VARIABLE 'REPO_PACKS'. Settings > Secrets and variables > Actions > pestana Variables > New repository variable. Valor: usuario/repositorio"
+            fallo=1
+          elif ! echo "$REPO_PACKS" | grep -qE '^[^/]+/[^/]+$'; then
+            echo "::error::REPO_PACKS vale '$REPO_PACKS' y deberia ser 'usuario/repositorio', sin https:// ni .git"
+            fallo=1
+          else
+            echo "OK: $REPO_PACKS"
+          fi
+
+          echo "--- Secretos presentes ---"
+          for s in PACKS_TOKEN CHAIN_TOKEN PLAYIT_SECRET; do
+            v="${!s:-}"
+            if [ -z "$v" ]; then
+              echo "::error::Falta el SECRETO '$s' (o esta creado como Environment secret en vez de Repository secret)"
+              fallo=1
+            else
+              echo "OK: $s presente (${#v} caracteres)"
+            fi
+          done
+
+          [ "$fallo" -eq 1 ] && exit 1
+
+          echo "--- El PACKS_TOKEN puede leer el repo de los packs? ---"
+          code=$(curl -s -o resp.json -w "%{http_code}" \
+            -H "Authorization: Bearer $PACKS_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPO_PACKS")
+          echo "HTTP $code"
+          case "$code" in
+            200) echo "OK: el token ve el repositorio" ;;
+            401) echo "::error::PACKS_TOKEN invalido o caducado. Vuelve a generarlo."; exit 1 ;;
+            404) echo "::error::El PACKS_TOKEN no ve '$REPO_PACKS'. Causas tipicas: (a) lo creaste con la cuenta equivocada, tiene que ser la DUENA del repo privado; (b) en 'Repository access' no marcaste ese repositorio; (c) le falta el permiso 'Contents: read'."; exit 1 ;;
+            *) echo "::error::Respuesta inesperada $code"; cat resp.json; exit 1 ;;
+          esac
+          rm -f resp.json
+
       - name: Clonar los packs desde el repo privado
         uses: actions/checkout@v4
         with:
-          repository: ${{ env.REPO_PACKS }}
+          repository: ${{ vars.REPO_PACKS }}
           token: ${{ secrets.PACKS_TOKEN }}
           path: packs
 
@@ -118,6 +167,7 @@ jobs:
           echo "--- playit ---"; tail -20 playit.log || true
 
       - name: Arrancar el servidor
+        id: servidor
         run: |
           set -euo pipefail
           MIN="${{ github.event.inputs.minutos || '335' }}"
@@ -174,8 +224,11 @@ jobs:
           gh release upload mundo /tmp/world.zip --repo "${{ github.repository }}" --clobber
           echo "Mundo subido a la release 'mundo'"
 
+      # Solo se encadena si el servidor LLEGO A ARRANCAR. Antes se relanzaba
+      # pase lo que pase, asi que un secreto mal puesto generaba un bucle de
+      # ejecuciones fallidas una detras de otra.
       - name: Encadenar la siguiente sesion
-        if: always()
+        if: always() && steps.servidor.conclusion != 'skipped'
         env:
           # GITHUB_TOKEN no puede disparar otro workflow (proteccion anti-bucle):
           # hace falta un token personal, y de ESTA cuenta, no la de los packs.
