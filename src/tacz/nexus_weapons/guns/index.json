@@ -1,0 +1,10 @@
+{
+  "nexus:ballistic_pistol": "nexus:guns/data/ballistic_pistol_data.json",
+  "nexus:heavy_shotgun": "nexus:guns/data/heavy_shotgun_data.json",
+  "nexus:tactical_smg": "nexus:guns/data/tactical_smg_data.json",
+  "nexus:assault_rifle": "nexus:guns/data/assault_rifle_data.json",
+  "nexus:marksman_dmr": "nexus:guns/data/marksman_dmr_data.json",
+  "nexus:anti_colossus_sniper": "nexus:guns/data/anti_colossus_sniper_data.json",
+  "nexus:plasma_lmg": "nexus:guns/data/plasma_lmg_data.json",
+  "nexus:technomantic_launcher": "nexus:guns/data/technomantic_launcher_data.json"
+}

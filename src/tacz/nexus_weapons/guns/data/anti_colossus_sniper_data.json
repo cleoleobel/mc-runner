@@ -1,0 +1,25 @@
+{
+  "ammo": "nexus:anti_colossus_ammo",
+  "ammo_amount": 5,
+  "bolt": "manual_action",
+  "rpm": 45,
+  "bullet": {
+    "life": 10,
+    "damage": 85.0,
+    "tracer": true,
+    "speed": 350.0,
+    "gravity": 0.01,
+    "knockback": 1.5,
+    "friction": 0.001
+  },
+  "recoil": {
+    "pitch": [
+      {"time": 0.0, "value": [6.0, 8.0]},
+      {"time": 0.3, "value": [0.0, 0.0]}
+    ],
+    "yaw": [
+      {"time": 0.0, "value": [-1.0, 1.0]},
+      {"time": 0.3, "value": [0.0, 0.0]}
+    ]
+  }
+}

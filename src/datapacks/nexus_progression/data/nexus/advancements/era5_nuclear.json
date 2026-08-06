@@ -1,0 +1,30 @@
+{
+  "parent": "nexus:era4_chemical",
+  "display": {
+    "icon": {
+      "item": "alexscaves:uranium"
+    },
+    "title": {
+      "text": "Era V: Dominio Nuclear",
+      "color": "green"
+    },
+    "description": {
+      "text": "Explora Toxic Caves, derrota al Nameless Guardian, domina la Fisión Nuclear y desbloquea el Digital Miner"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true
+  },
+  "criteria": {
+    "has_uranium": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": ["alexscaves:uranium"]
+          }
+        ]
+      }
+    }
+  }
+}

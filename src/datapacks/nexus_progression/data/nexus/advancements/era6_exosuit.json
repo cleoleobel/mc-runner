@@ -1,0 +1,30 @@
+{
+  "parent": "nexus:era5_nuclear",
+  "display": {
+    "icon": {
+      "item": "cataclysm:ignitium_ingot"
+    },
+    "title": {
+      "text": "Era VI: Exotraje Ignis",
+      "color": "red"
+    },
+    "description": {
+      "text": "Derrota a Ignis en el Nether para obtener Ignitium y forjar el blindaje avanzado del MekaSuit"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true
+  },
+  "criteria": {
+    "has_ignitium": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": ["cataclysm:ignitium_ingot"]
+          }
+        ]
+      }
+    }
+  }
+}

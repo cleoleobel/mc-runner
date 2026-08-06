@@ -1,0 +1,30 @@
+{
+  "parent": "nexus:era1_survival",
+  "display": {
+    "icon": {
+      "item": "create:mechanical_press"
+    },
+    "title": {
+      "text": "Era II: Fuerza Cinética",
+      "color": "gold"
+    },
+    "description": {
+      "text": "Construye automatización física con Create (prensas, corte y mezcladoras)"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true
+  },
+  "criteria": {
+    "has_press": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": ["create:mechanical_press"]
+          }
+        ]
+      }
+    }
+  }
+}

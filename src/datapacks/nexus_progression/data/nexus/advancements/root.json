@@ -1,0 +1,24 @@
+{
+  "display": {
+    "icon": {
+      "item": "minecraft:compass"
+    },
+    "title": {
+      "text": "NEXUS — Misión de Progresión",
+      "color": "gold",
+      "bold": true
+    },
+    "description": {
+      "text": "Supervivencia, Industria, Magia y Tecnología Unificada"
+    },
+    "background": "minecraft:textures/block/stone.png",
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true
+  },
+  "criteria": {
+    "tick": {
+      "trigger": "minecraft:tick"
+    }
+  }
+}

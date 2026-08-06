@@ -1,0 +1,30 @@
+{
+  "parent": "nexus:era3_current",
+  "display": {
+    "icon": {
+      "item": "nexuscore:arcane_catalyst"
+    },
+    "title": {
+      "text": "Era IV: Química Arcana",
+      "color": "dark_purple"
+    },
+    "description": {
+      "text": "Explora Forlorn Hollows, sintetiza Catalizadores Arcanos e inicia la metalurgia avanzada de Mekanism"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true
+  },
+  "criteria": {
+    "has_catalyst": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": ["nexuscore:arcane_catalyst"]
+          }
+        ]
+      }
+    }
+  }
+}

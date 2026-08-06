@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Specification-Title: nexuscore
+Specification-Vendor: NexusTeam
+Specification-Version: 1
+Implementation-Title: nexus-core
+Implementation-Version: 1.0.0
+Implementation-Vendor: NexusTeam
+Implementation-Timestamp: 2026-08-06T18:15:55-0400
+

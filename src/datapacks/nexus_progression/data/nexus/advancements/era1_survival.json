@@ -1,0 +1,30 @@
+{
+  "parent": "nexus:root",
+  "display": {
+    "icon": {
+      "item": "alexscaves:cave_book"
+    },
+    "title": {
+      "text": "Era I: Supervivencia Arcaica",
+      "color": "yellow"
+    },
+    "description": {
+      "text": "Descubre las profundidades y consigue el Compendio de Cuevas"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true
+  },
+  "criteria": {
+    "has_cave_book": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": ["alexscaves:cave_book"]
+          }
+        ]
+      }
+    }
+  }
+}
