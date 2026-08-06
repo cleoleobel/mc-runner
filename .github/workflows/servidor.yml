@@ -80,9 +80,6 @@ jobs:
     timeout-minutes: 350
 
     steps:
-      - name: Descargar este repo
-        uses: actions/checkout@v4
-
       # Falla pronto y con un mensaje util. Sin esto, un secreto mal puesto
       # revienta en el checkout con un "repository not found" que no dice nada.
       - name: Comprobar configuracion
@@ -146,12 +143,18 @@ jobs:
           fi
           echo "OK: el token puede clonar el repositorio"
 
+      # Sin la action de checkout A PROPOSITO. El 6 de agosto de 2026 GitHub no
+      # podia servir sus propias actions ("Failed to resolve action download
+      # info: Service Unavailable") y el job moria antes de ejecutar un solo
+      # paso. Con git clone no se depende de ese servicio. El repo mc-runner no
+      # se clona: no se usa ni uno de sus archivos, solo el workflow.
       - name: Clonar los packs desde el repo privado
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ vars.REPO_PACKS }}
-          token: ${{ secrets.PACKS_TOKEN }}
-          path: packs
+        env:
+          PACKS_TOKEN: ${{ secrets.PACKS_TOKEN }}
+        run: |
+          set -euo pipefail
+          git clone --depth 1 "https://x-access-token:${PACKS_TOKEN}@github.com/${REPO_PACKS}.git" packs
+          echo "Packs clonados desde ${REPO_PACKS}"
 
       - name: Descargar el servidor Bedrock
         run: |
