@@ -1,0 +1,6 @@
+{
+  "name": "nexus_weapons.ammo.standard_ammo.name",
+  "display": "tacz:9mm_display",
+  "stack_size": 60,
+  "sort": 1
+}

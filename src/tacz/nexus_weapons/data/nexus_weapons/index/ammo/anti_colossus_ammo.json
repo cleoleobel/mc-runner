@@ -1,0 +1,6 @@
+{
+  "name": "nexus_weapons.ammo.anti_colossus_ammo.name",
+  "display": "tacz:50bmg_display",
+  "stack_size": 10,
+  "sort": 3
+}

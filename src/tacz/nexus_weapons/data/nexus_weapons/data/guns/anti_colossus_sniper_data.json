@@ -1,0 +1,63 @@
+{
+  "ammo": "nexus_weapons:anti_colossus_ammo",
+  "rpm": 45,
+  "bullet": {
+    "life": 0.9,
+    "bullet_amount": 1,
+    "damage": 85,
+    "tracer_count_interval": 0,
+    "extra_damage": {
+      "armor_ignore": 0.7,
+      "head_shot_multiplier": 2.0,
+      "damage_adjust": [
+        {"distance": 80, "damage": 85},
+        {"distance": 160, "damage": 70},
+        {"distance": "infinite", "damage": 50}
+      ]
+    },
+    "speed": 350,
+    "gravity": 0.15,
+    "knockback": 0,
+    "friction": 0.025,
+    "ignite": false,
+    "pierce": 4
+  },
+  "ammo_amount": 5,
+  "bolt": "manual_action",
+  "bolt_action_time": 1.2,
+  "reload": {
+    "type": "magazine",
+    "feed": { "empty": 3.0, "tactical": 2.2 },
+    "cooldown": { "empty": 3.4, "tactical": 2.4 }
+  },
+  "draw_time": 0.4,
+  "put_away_time": 0.75,
+  "aim_time": 0.3,
+  "sprint_time": 0.25,
+  "weight": 7.5,
+  "movement_speed": {
+    "base": 0.0,
+    "aim": -0.4,
+    "reload": -0.2
+  },
+  "fire_mode": ["semi"],
+  "recoil": {
+    "pitch": [
+      {"time": 0, "value": [6.0, 8.0]},
+      {"time": 0.1, "value": [4.0, 4.0]},
+      {"time": 0.6, "value": [-0.5, -0.5]},
+      {"time": 0.85, "value": [0, 0]}
+    ],
+    "yaw": [
+      {"time": 0, "value": [-1.0, 1.0]},
+      {"time": 0.5, "value": [0, 0]}
+    ]
+  },
+  "inaccuracy": {
+    "stand": 5,
+    "move": 5.5,
+    "sneak": 3,
+    "lie": 2.5,
+    "aim": 0.05
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "nexus_weapons.gun.plasma_lmg.name",
+  "display": "tacz:m249_display",
+  "data": "nexus_weapons:plasma_lmg_data",
+  "tooltip": "nexus_weapons.gun.plasma_lmg.desc",
+  "type": "mg",
+  "sort": 7
+}

@@ -1,0 +1,8 @@
+{
+  "name": "nexus_weapons.gun.marksman_dmr.name",
+  "display": "tacz:mk14_display",
+  "data": "nexus_weapons:marksman_dmr_data",
+  "tooltip": "nexus_weapons.gun.marksman_dmr.desc",
+  "type": "sniper",
+  "sort": 5
+}

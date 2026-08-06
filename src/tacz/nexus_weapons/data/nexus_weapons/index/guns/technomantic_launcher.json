@@ -1,0 +1,8 @@
+{
+  "name": "nexus_weapons.gun.technomantic_launcher.name",
+  "display": "tacz:rpg7_display",
+  "data": "nexus_weapons:technomantic_launcher_data",
+  "tooltip": "nexus_weapons.gun.technomantic_launcher.desc",
+  "type": "rpg",
+  "sort": 8
+}

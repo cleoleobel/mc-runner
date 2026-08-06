@@ -1,0 +1,8 @@
+{
+  "name": "nexus_weapons.gun.anti_colossus_sniper.name",
+  "display": "tacz:ai_awp_display",
+  "data": "nexus_weapons:anti_colossus_sniper_data",
+  "tooltip": "nexus_weapons.gun.anti_colossus_sniper.desc",
+  "type": "sniper",
+  "sort": 6
+}

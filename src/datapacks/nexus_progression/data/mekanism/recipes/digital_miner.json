@@ -1,4 +1,4 @@
-﻿{
+{
     "key":  {
                 "R":  {
                           "item":  "mekanism:robit"
@@ -30,5 +30,5 @@
     "result":  {
                    "item":  "mekanism:digital_miner"
                },
-    "type":  "mekanism:mek_data"
+    "type":  "minecraft:crafting_shaped"
 }

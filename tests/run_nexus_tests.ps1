@@ -43,10 +43,10 @@ try {
         if (-not $json.display.title) { $advValid = $false }
     }
 
-    $taczPack = Get-Content "src/tacz/nexus_weapons/pack.json" -Raw | ConvertFrom-Json
-    $taczIndex = Get-Content "src/tacz/nexus_weapons/guns/index.json" -Raw | ConvertFrom-Json
+    $taczMeta = Get-Content "src/tacz/nexus_weapons/gunpack.meta.json" -Raw | ConvertFrom-Json
+    $taczIndexFiles = @(Get-ChildItem "src/tacz/nexus_weapons/data/nexus_weapons/index/guns" -Filter "*.json")
 
-    if ($advValid -and $taczPack.name -and $taczIndex.'nexus:anti_colossus_sniper') {
+    if ($advValid -and $taczMeta.namespace -eq "nexus_weapons" -and $taczIndexFiles.Count -eq 8) {
         Write-Host "  -> [PASO] Datapack (7 Eras) y Gunpack TaCZ (8 Clases) totalmente validos." -ForegroundColor Green
         $TestResults += [PSCustomObject]@{ Test = "Datapack and TaCZ Gunpack Structure"; Result = "PASO" }
     } else {

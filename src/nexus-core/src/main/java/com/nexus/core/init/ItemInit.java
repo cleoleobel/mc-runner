@@ -32,7 +32,7 @@ public final class ItemInit {
 
     public static final RegistryObject<CreativeModeTab> NEXUS_TAB = TABS.register("nexus",
             () -> CreativeModeTab.builder()
-                    .title(Component.translatable("itemGroup.nexuscore.nexus"))
+                    .title(Component.translatable("itemGroup.nexus.nexus"))
                     .icon(() -> new ItemStack(TECHNOMANTIC_CRYSTAL.get()))
                     .displayItems((params, output) -> {
                         output.accept(BALLISTIC_STEEL.get());

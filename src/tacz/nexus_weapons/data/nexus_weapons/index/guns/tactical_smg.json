@@ -1,0 +1,8 @@
+{
+  "name": "nexus_weapons.gun.tactical_smg.name",
+  "display": "tacz:p90_display",
+  "data": "nexus_weapons:tactical_smg_data",
+  "tooltip": "nexus_weapons.gun.tactical_smg.desc",
+  "type": "smg",
+  "sort": 3
+}

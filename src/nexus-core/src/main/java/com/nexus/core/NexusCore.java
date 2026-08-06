@@ -1,4 +1,4 @@
-﻿package com.nexus.core;
+package com.nexus.core;
 
 import com.nexus.core.config.NexusConfig;
 import com.nexus.core.init.ItemInit;

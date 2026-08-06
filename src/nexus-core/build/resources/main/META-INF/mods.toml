@@ -3,7 +3,7 @@ loaderVersion="[47,)"
 license="MIT"
 
 [[mods]]
-modId="nexuscore"
+modId="nexus"
 version="1.0.0"
 displayName="Nexus Core"
 authors="Antigravity Architect"
@@ -12,16 +12,17 @@ Rules engine for NEXUS: co-op boss scaling, boss damage caps, the anti-colossus
 rule, and the heavy-armour magic penalty. Registers the four NEXUS materials.
 '''
 
-[[dependencies.nexuscore]]
+[[dependencies.nexus]]
     modId="forge"
     mandatory=true
     versionRange="[47.2.0,)"
     ordering="NONE"
     side="BOTH"
 
-[[dependencies.nexuscore]]
+[[dependencies.nexus]]
     modId="minecraft"
     mandatory=true
     versionRange="[1.20.1,1.20.2)"
     ordering="NONE"
     side="BOTH"
+

@@ -1,4 +1,4 @@
-﻿{
+{
     "key":  {
                 "C":  {
                           "tag":  "forge:circuits/basic"
@@ -24,5 +24,5 @@
     "result":  {
                    "item":  "mekanism:jetpack"
                },
-    "type":  "mekanism:mek_data"
+    "type":  "minecraft:crafting_shaped"
 }

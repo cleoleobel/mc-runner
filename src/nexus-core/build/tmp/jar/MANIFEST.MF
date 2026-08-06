@@ -1,9 +1,9 @@
 Manifest-Version: 1.0
-Specification-Title: nexuscore
+Specification-Title: nexus
 Specification-Vendor: NexusTeam
 Specification-Version: 1
 Implementation-Title: nexus-core
 Implementation-Version: 1.0.0
 Implementation-Vendor: NexusTeam
-Implementation-Timestamp: 2026-08-06T18:54:16-0400
+Implementation-Timestamp: 2026-08-06T19:14:29-0400
 

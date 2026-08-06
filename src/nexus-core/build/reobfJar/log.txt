@@ -142,22 +142,22 @@ Writing Output: C:\Users\PC\Desktop\java\src\nexus-core\build\reobfJar\output.ja
   META-INF/MANIFEST.MF
   META-INF/mods.toml
   assets/
-  assets/nexuscore/
-  assets/nexuscore/lang/
-  assets/nexuscore/lang/en_us.json
-  assets/nexuscore/lang/es_es.json
-  assets/nexuscore/models/
-  assets/nexuscore/models/item/
-  assets/nexuscore/models/item/arcane_catalyst.json
-  assets/nexuscore/models/item/ballistic_steel.json
-  assets/nexuscore/models/item/containment_rune.json
-  assets/nexuscore/models/item/technomantic_crystal.json
-  assets/nexuscore/textures/
-  assets/nexuscore/textures/item/
-  assets/nexuscore/textures/item/arcane_catalyst.png
-  assets/nexuscore/textures/item/ballistic_steel.png
-  assets/nexuscore/textures/item/containment_rune.png
-  assets/nexuscore/textures/item/technomantic_crystal.png
+  assets/nexus/
+  assets/nexus/lang/
+  assets/nexus/lang/en_us.json
+  assets/nexus/lang/es_es.json
+  assets/nexus/models/
+  assets/nexus/models/item/
+  assets/nexus/models/item/arcane_catalyst.json
+  assets/nexus/models/item/ballistic_steel.json
+  assets/nexus/models/item/containment_rune.json
+  assets/nexus/models/item/technomantic_crystal.json
+  assets/nexus/textures/
+  assets/nexus/textures/item/
+  assets/nexus/textures/item/arcane_catalyst.png
+  assets/nexus/textures/item/ballistic_steel.png
+  assets/nexus/textures/item/containment_rune.png
+  assets/nexus/textures/item/technomantic_crystal.png
   com/
   com/nexus/
   com/nexus/core/
