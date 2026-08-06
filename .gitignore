@@ -1,0 +1,7 @@
+﻿backups/*
+_work/*
+.gradle/*
+build/*
+dist/*
+*.jar
+*.zip
