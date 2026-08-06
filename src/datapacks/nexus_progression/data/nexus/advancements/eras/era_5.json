@@ -1,0 +1,33 @@
+﻿{
+    "display":  {
+                    "icon":  {
+                                 "item":  "mekanism:digital_miner"
+                             },
+                    "title":  "ERA V - Nuclear",
+                    "description":  "Containment allows fission.",
+                    "frame":  "goal",
+                    "show_toast":  true,
+                    "announce_to_chat":  true,
+                    "hidden":  false
+                },
+    "criteria":  {
+                     "obtain":  {
+                                    "trigger":  "minecraft:inventory_changed",
+                                    "conditions":  {
+                                                       "items":  [
+                                                                     {
+                                                                         "items":  [
+                                                                                       "mekanism:digital_miner"
+                                                                                   ]
+                                                                     }
+                                                                 ]
+                                                   }
+                                }
+                 },
+    "requirements":  [
+                         [
+                             "obtain"
+                         ]
+                     ],
+    "parent":  "nexus:eras/era_4"
+}

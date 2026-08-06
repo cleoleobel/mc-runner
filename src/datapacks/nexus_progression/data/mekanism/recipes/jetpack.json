@@ -1,0 +1,28 @@
+﻿{
+    "key":  {
+                "C":  {
+                          "tag":  "forge:circuits/basic"
+                      },
+                "S":  {
+                          "tag":  "forge:ingots/steel"
+                      },
+                "T":  {
+                          "item":  "mekanism:basic_chemical_tank"
+                      },
+                "I":  {
+                          "tag":  "forge:ingots/tin"
+                      },
+                "G":  {
+                          "item":  "cataclysm:ignitium_ingot"
+                      }
+            },
+    "pattern":  [
+                    "SCS",
+                    "ITI",
+                    " G "
+                ],
+    "result":  {
+                   "item":  "mekanism:jetpack"
+               },
+    "type":  "mekanism:mek_data"
+}

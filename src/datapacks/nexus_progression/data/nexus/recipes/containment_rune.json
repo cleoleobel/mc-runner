@@ -1,0 +1,25 @@
+﻿{
+    "key":  {
+                "O":  {
+                          "item":  "minecraft:obsidian"
+                      },
+                "L":  {
+                          "tag":  "forge:ingots/lead"
+                      },
+                "R":  {
+                          "item":  "irons_spellbooks:blank_rune"
+                      },
+                "U":  {
+                          "item":  "alexscaves:uranium"
+                      }
+            },
+    "pattern":  [
+                    "LOL",
+                    "URU",
+                    "LOL"
+                ],
+    "result":  {
+                   "item":  "nexus:containment_rune"
+               },
+    "type":  "minecraft:crafting_shaped"
+}

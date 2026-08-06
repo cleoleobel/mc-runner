@@ -8,7 +8,8 @@ version="1.0.0"
 displayName="Nexus Core"
 authors="Antigravity Architect"
 description='''
-Core integration, boss scaling, radiation resistance, and magic-tech balancing for NEXUS.
+Rules engine for NEXUS: co-op boss scaling, boss damage caps, the anti-colossus
+rule, and the heavy-armour magic penalty. Registers the four NEXUS materials.
 '''
 
 [[dependencies.nexuscore]]

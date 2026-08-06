@@ -1,0 +1,9 @@
+﻿{
+    "replace":  false,
+    "values":  [
+                   {
+                       "id":  "nexus:technomantic_crystal",
+                       "required":  false
+                   }
+               ]
+}

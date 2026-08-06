@@ -1,0 +1,33 @@
+﻿{
+    "display":  {
+                    "icon":  {
+                                 "item":  "mekanism:jetpack"
+                             },
+                    "title":  "ERA VI - Exosuit",
+                    "description":  "Ignitium armours the exosuit.",
+                    "frame":  "goal",
+                    "show_toast":  true,
+                    "announce_to_chat":  true,
+                    "hidden":  false
+                },
+    "criteria":  {
+                     "obtain":  {
+                                    "trigger":  "minecraft:inventory_changed",
+                                    "conditions":  {
+                                                       "items":  [
+                                                                     {
+                                                                         "items":  [
+                                                                                       "mekanism:jetpack"
+                                                                                   ]
+                                                                     }
+                                                                 ]
+                                                   }
+                                }
+                 },
+    "requirements":  [
+                         [
+                             "obtain"
+                         ]
+                     ],
+    "parent":  "nexus:eras/era_5"
+}
