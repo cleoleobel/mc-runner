@@ -964,7 +964,7 @@ jobs:
       # pase lo que pase, asi que un secreto mal puesto generaba un bucle de
       # ejecuciones fallidas una detras de otra.
       - name: Encadenar la siguiente sesion
-        if: always() && steps.servidor.conclusion != 'skipped'
+        if: ${{ !cancelled() && steps.servidor.conclusion != 'skipped' }}
         env:
           # GITHUB_TOKEN no puede disparar otro workflow (proteccion anti-bucle):
           # hace falta un token personal, y de ESTA cuenta, no la de los packs.
