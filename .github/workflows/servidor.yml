@@ -33,7 +33,7 @@ on:
 
 concurrency:
   group: servidor-bedrock
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
   contents: write
