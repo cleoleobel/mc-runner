@@ -11,11 +11,11 @@
 | Metric / Parameter | Baseline / Unoptimized | Optimized NEXUS Configuration | Improvement % |
 |---|---|---|---|
 | **JVM Heap Allocation** | `-Xmx14G` (Unsafe max) | `-Xms4G -Xmx10G` (Dynamic Heap) | **+40% OS/System headroom** |
-| **Garbage Collector** | Default Parallel GC | Tuned G1GC (`-XX:MaxGCPauseMillis=50`, `G1HeapRegionSize=32M`) | **-65% GC pause duration** |
-| **Startup Time (Forge Boot)** | 85.4 seconds | 42.1 seconds (via ModernFix & FerriteCore) | **+50.7% faster boot** |
-| **RAM Heap Idle** | 3.8 GB | 1.8 GB | **-52.6% idle memory footprint** |
-| **Redstone Calculation MSPT** | 14.2 ms (Vanilla engine) | 1.1 ms (Alternate Current engine) | **+92.2% Redstone efficiency** |
-| **XP Orb Entity Overhead** | High (50+ entity ticks) | Low (Merged via Clumps) | **-80% XP entity tick load** |
+| **Garbage Collector** | Default Parallel GC | Tuned G1GC (`-XX:MaxGCPauseMillis=50`, `G1HeapRegionSize=32M`) | **[UNVERIFIED] -65% GC pause duration** |
+| **Startup Time (Forge Boot)** | 85.4 seconds | 42.1 seconds (via ModernFix & FerriteCore) | **[UNVERIFIED] +50.7% faster boot** |
+| **RAM Heap Idle** | 3.8 GB | 1.8 GB | **[UNVERIFIED] -52.6% idle memory footprint** |
+| **Redstone Calculation MSPT** | 14.2 ms (Vanilla engine) | 1.1 ms (Alternate Current engine) | **[UNVERIFIED] +92.2% Redstone efficiency** |
+| **XP Orb Entity Overhead** | High (50+ entity ticks) | Low (Merged via Clumps) | **[UNVERIFIED] -80% XP entity tick load** |
 
 ---
 

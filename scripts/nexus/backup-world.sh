@@ -27,7 +27,7 @@ fi
 
 # 1. Sincronizar disco
 echo "[BACKUP] Sincronizando sistema de archivos..."
-sync || true
+sync
 
 # 2. Comprimir nuevo mundo en archivo temporal aislado
 TEMP_BACKUP="$BACKUP_DIR/new-world-staging.tar.gz"
@@ -64,3 +64,4 @@ cat << EOF > "$BACKUP_DIR/backup-info.json"
 EOF
 
 echo "[BACKUP LOCAL SUCCESS] Backup generado exitosamente en $BACKUP_DIR/$HISTORICAL_NAME"
+exit 0

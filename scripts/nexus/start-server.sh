@@ -10,6 +10,9 @@ LOG_DIR="logs"
 mkdir -p "$LOG_DIR"
 SERVER_LOG="$LOG_DIR/latest.log"
 
+mkdir -p "session_diagnostics"
+echo "⏳ INICIANDO" > "session_diagnostics/status_server.txt"
+
 OPERATION="${1:-run-server}"
 SESSION_MINUTES="${SESSION_MINUTES:-330}"
 
@@ -79,12 +82,14 @@ while [ $ELAPSED -lt $BOOT_TIMEOUT ]; do
         echo "[CRASH FATAL] El proceso Java de Forge se detuvo prematuramente."
         echo "=== ÚLTIMAS 50 LÍNEAS DE LOG DE ERROR ==="
         tail -n 50 "$SERVER_LOG"
+        echo "❌ CRASHED" > "session_diagnostics/status_server.txt"
         exit 1
     fi
 
     if grep -qE 'Done \([0-9]+\.[0-9]+s\)!|Done \([0-9]+\.[0-9]+s\)' "$SERVER_LOG"; then
         BOOTED=true
         echo "[MINECRAFT SUCCESS] Servidor Forge iniciado correctamente en ${ELAPSED}s."
+        echo "✅ ONLINE" > "session_diagnostics/status_server.txt"
         break
     fi
 
@@ -96,6 +101,7 @@ if [ "$BOOTED" = false ]; then
     echo "[TIMEOUT ERROR] El servidor no alcanzó el estado 'Done' dentro de ${BOOT_TIMEOUT}s."
     echo "=== ÚLTIMAS 50 LÍNEAS DE LOG ==="
     tail -n 50 "$SERVER_LOG"
+    echo "❌ TIMEOUT" > "session_diagnostics/status_server.txt"
     exit 1
 fi
 

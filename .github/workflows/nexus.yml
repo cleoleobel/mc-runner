@@ -32,7 +32,7 @@ on:
 
 concurrency:
   group: nexus-java-server
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -129,10 +129,19 @@ jobs:
           echo "| **Versión Modpack** | \`NEXUS $NEXUS_SERVER_VERSION\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Minecraft / Forge** | 1.20.1 / Forge 47.4.0 |" >> $GITHUB_STEP_SUMMARY
           echo "| **Operación** | \`${{ inputs.operation }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Servidor Minecraft** | ✅ OK |" >> $GITHUB_STEP_SUMMARY
+          
+          # Dynamic status reads (Assuming scripts write to session_diagnostics/status_*.txt)
+          STATUS_SERVER="❌ ERROR"
+          [ -f "session_diagnostics/status_server.txt" ] && STATUS_SERVER=$(cat session_diagnostics/status_server.txt)
+          echo "| **Servidor Minecraft** | $STATUS_SERVER |" >> $GITHUB_STEP_SUMMARY
+          
           echo "| **Chat de Voz (UDP 24454)** | ✅ Configurado |" >> $GITHUB_STEP_SUMMARY
           echo "| **Túnel Playit.gg** | ${PLAYIT_SECRET:+'✅ Activo'}${PLAYIT_SECRET:-'⚠️ Desactivado'} |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Persistencia Mundo** | ✅ Guardado en Storage |" >> $GITHUB_STEP_SUMMARY
+          
+          STATUS_BACKUP="❌ PENDIENTE / FALLIDO"
+          [ -f "session_diagnostics/status_backup.txt" ] && STATUS_BACKUP=$(cat session_diagnostics/status_backup.txt)
+          echo "| **Persistencia Mundo** | $STATUS_BACKUP |" >> $GITHUB_STEP_SUMMARY
+          
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📊 Recursos del Runner" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
@@ -147,12 +156,19 @@ jobs:
       - name: ETAPA 17 - Empaquetar y Verificar Backup del Mundo
         if: always()
         run: |
-          bash scripts/nexus/backup-world.sh || true
+          mkdir -p session_diagnostics
+          bash scripts/nexus/backup-world.sh
 
       - name: ETAPA 18 & 19 - Subir Backup a NEXUS STORAGE y Verificar
         if: always()
         run: |
-          bash scripts/nexus/upload-world.sh || true
+          mkdir -p session_diagnostics
+          if bash scripts/nexus/upload-world.sh; then
+            echo "✅ Guardado en Storage" > session_diagnostics/status_backup.txt
+          else
+            echo "❌ ERROR AL SUBIR" > session_diagnostics/status_backup.txt
+            exit 1
+          fi
 
       - name: ETAPA 20 - Diagnóstico Final y Artefactos
         if: always()
