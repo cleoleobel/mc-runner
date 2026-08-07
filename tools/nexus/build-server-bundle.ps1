@@ -6,7 +6,8 @@
 [CmdletBinding()]
 param(
     [string]$Version = "2026.08.07-01",
-    [string]$OutputDir = "dist/github"
+    [string]$OutputDir = "dist/github",
+    [switch]$DryRun = $false
 )
 
 $ErrorActionPreference = "Stop"
@@ -14,56 +15,96 @@ $ErrorActionPreference = "Stop"
 Write-Host "==================================================" -ForegroundColor Cyan
 Write-Host "   EMPAQUETADOR AUTOMATICO DE SERVIDOR NEXUS" -ForegroundColor Cyan
 Write-Host "   Version Objetivo: $Version" -ForegroundColor Cyan
+Write-Host "   Modo DryRun:     $DryRun" -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor Cyan
 
 $WorkspaceRoot = Get-Location
 $StagingDir = Join-Path $WorkspaceRoot "dist/staging_server"
 $FinalOutputDir = Join-Path $WorkspaceRoot $OutputDir
 
-# 1. Limpieza de staging previo
-if (Test-Path $StagingDir) {
-    Remove-Item -Recurse -Force $StagingDir
-}
-New-Item -ItemType Directory -Force -Path $StagingDir | Out-Null
-New-Item -ItemType Directory -Force -Path $FinalOutputDir | Out-Null
-
-# 2. Verificación de archivos origen esenciales
+# Buscar fuente principal de mods: Instancia activa local primero, fallback a dist/NEXUS_SERVER_READY
+$ClientInstanceMods = "C:\Users\PC\AppData\Roaming\.minecraft\instances\f094d86375724af2bd72f8fffd725379\mods"
 $ServerReadyDir = Join-Path $WorkspaceRoot "dist/NEXUS_SERVER_READY"
 $WorkServerDir = Join-Path $WorkspaceRoot "_work/server"
 
-if (-not (Test-Path $ServerReadyDir)) {
-    throw "ERROR CRITICO: No se encuentra $ServerReadyDir"
+$ModSourceDir = $null
+if (Test-Path $ClientInstanceMods) {
+    $ModSourceDir = $ClientInstanceMods
+    Write-Host "[MOD SOURCE] Usando instancia cliente local activa: $ModSourceDir" -ForegroundColor Green
+} elseif (Test-Path (Join-Path $ServerReadyDir "mods")) {
+    $ModSourceDir = Join-Path $ServerReadyDir "mods"
+    Write-Host "[MOD SOURCE] Usando NEXUS_SERVER_READY: $ModSourceDir" -ForegroundColor Yellow
+} else {
+    throw "ERROR CRITICO: No se encontró fuente de mods válida."
 }
 
-Write-Host "[1/8] Copiando mods de servidor desde NEXUS_SERVER_READY..." -ForegroundColor Yellow
-$ModsStaging = New-Item -ItemType Directory -Force -Path (Join-Path $StagingDir "mods")
+if (-not $DryRun) {
+    if (Test-Path $StagingDir) { Remove-Item -Recurse -Force $StagingDir }
+    New-Item -ItemType Directory -Force -Path $StagingDir | Out-Null
+    New-Item -ItemType Directory -Force -Path $FinalOutputDir | Out-Null
+}
 
-# Copiar mods aprobados para servidor
-$ServerMods = Get-ChildItem -Path (Join-Path $ServerReadyDir "mods") -Filter "*.jar"
-foreach ($mod in $ServerMods) {
-    # Validar exclusiones prohibidas
+Write-Host "[1/8] Clasificando y seleccionando mods de servidor..." -ForegroundColor Yellow
+$ModsStaging = if (-not $DryRun) { New-Item -ItemType Directory -Force -Path (Join-Path $StagingDir "mods") } else { $null }
+
+$SourceMods = Get-ChildItem -Path $ModSourceDir -Filter "*.jar"
+$IncludedCount = 0
+$ExcludedCount = 0
+
+foreach ($mod in $SourceMods) {
+    # Validar exclusiones prohibidas (IronsArms / ArmsLib)
     if ($mod.Name -match "IronsArms" -or $mod.Name -match "ArmsLib") {
         throw "PROHIBICION VIOLADA: Se detecto mod prohibido ($($mod.Name)). El empaquetador se aborta."
     }
+
     # Validar exclusiones de cliente
-    if ($mod.Name -match "embeddium" -or $mod.Name -match "chloride" -or $mod.Name -match "entityculling" -or $mod.Name -match "immediatelyfast" -or $mod.Name -match "DistantHorizons" -or $mod.Name -match "Xaeros" -or $mod.Name -match "Controlling") {
+    if ($mod.Name -match "embeddium" -or $mod.Name -match "chloride" -or `
+        $mod.Name -match "entityculling" -or $mod.Name -match "immediatelyfast" -or `
+        $mod.Name -match "DistantHorizons" -or $mod.Name -match "xaero" -or `
+        $mod.Name -match "Controlling" -or $mod.Name -match "vanillin" -or `
+        $mod.Name -match "sodiumoptionsapi" -or $mod.Name -match "CullLessLeaves" -or `
+        $mod.Name -match "gpumemleakfix" -or $mod.Name -match "Searchables") {
         Write-Host "  [OMITIDO CLIENT-ONLY] $($mod.Name)" -ForegroundColor DarkGray
+        $ExcludedCount++
         continue
     }
-    Copy-Item -Path $mod.FullName -Destination $ModsStaging.FullName -Force
-    Write-Host "  [INCLUIDO] $($mod.Name)" -ForegroundColor Green
+
+    # Validar version de Cataclysm (asegurar v3.16 sobre v3.31 si existe)
+    if ($mod.Name -match "Cataclysm" -and $mod.Name -notmatch "3.16" -and $mod.Name -notmatch "spellbooks") {
+        Write-Host "  [OMITIDO VERSION INCOMPATIBLE] $($mod.Name) (Requiere Cataclysm 3.16)" -ForegroundColor Red
+        $ExcludedCount++
+        continue
+    }
+
+    Write-Host "  [INCLUIDO SERVER/BOTH] $($mod.Name)" -ForegroundColor Green
+    $IncludedCount++
+    if (-not $DryRun) {
+        Copy-Item -Path $mod.FullName -Destination $ModsStaging.FullName -Force
+    }
 }
 
-# Incluir optimizaciones server-side adicionales si existen en downloads
+# Incluir optimizaciones server-side desde downloads si no estaban en el origen
 $DownloadsDir = Join-Path $WorkspaceRoot "downloads"
 if (Test-Path $DownloadsDir) {
     $OptMods = Get-ChildItem -Path $DownloadsDir -Filter "*.jar" | Where-Object {
         $_.Name -match "Clumps" -or $_.Name -match "alternate_current" -or $_.Name -match "getittogetherdrops"
     }
     foreach ($opt in $OptMods) {
-        Copy-Item -Path $opt.FullName -Destination $ModsStaging.FullName -Force
-        Write-Host "  [INCLUIDO OPTIMIZADOR] $($opt.Name)" -ForegroundColor Green
+        if (-not $DryRun -and -not (Test-Path (Join-Path $ModsStaging.FullName $opt.Name))) {
+            Copy-Item -Path $opt.FullName -Destination $ModsStaging.FullName -Force
+            Write-Host "  [INCLUIDO OPTIMIZADOR DOWNLOADS] $($opt.Name)" -ForegroundColor Green
+            $IncludedCount++
+        }
     }
+}
+
+if ($DryRun) {
+    Write-Host "==================================================" -ForegroundColor Yellow
+    Write-Host "   RESUMEN DRY-RUN:" -ForegroundColor Yellow
+    Write-Host "   Mods Incluidos para Servidor: $IncludedCount" -ForegroundColor Green
+    Write-Host "   Mods Omitidos (Client-Only/Incompatibles): $ExcludedCount" -ForegroundColor DarkGray
+    Write-Host "==================================================" -ForegroundColor Yellow
+    return
 }
 
 Write-Host "[2/8] Copiando configuraciones y voicechat..." -ForegroundColor Yellow
