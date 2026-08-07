@@ -73,6 +73,9 @@ else
 fi
 rm -rf verify_temp
 
+echo "[TESTING] Simulando fallo de red durante rotación..."
+exit 1
+
 # 6. Preservar mundo anterior y actualizar current SÓLO si la verificación fue exitosa
 echo "[UPLOAD] Verificación superada. Procediendo a rotar world-current..."
 mkdir -p rot_temp
