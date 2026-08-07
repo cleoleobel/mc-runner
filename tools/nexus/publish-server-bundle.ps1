@@ -46,13 +46,19 @@ Write-Host "[3/4] Creando/Actualizando release 'server-bundle-latest' en $Storag
 $Title = "NEXUS Server Bundle v$Version"
 $Notes = "Release oficial de distribución server-side para NEXUS Java 1.20.1 Forge 47.4.0."
 
-# Comprobar si la release ya existe
+# Comprobar si la release ya existe (manejando NativeCommandError en PowerShell)
 $ReleaseExists = $false
+$OldErrorPref = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
 try {
-    gh release view server-bundle-latest --repo $StorageRepo | Out-Null
-    $ReleaseExists = $true
+    $viewOutput = gh release view server-bundle-latest --repo $StorageRepo 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        $ReleaseExists = $true
+    }
 } catch {
     $ReleaseExists = $false
+} finally {
+    $ErrorActionPreference = $OldErrorPref
 }
 
 if ($ReleaseExists) {
