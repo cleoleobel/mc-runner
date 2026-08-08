@@ -101,7 +101,7 @@ fi
 # 3. Arrancar agente con sanitización de secrets
 echo "[PLAYIT] Iniciando daemon de Playit..."
 
-("$PLAYIT_BIN" --secret "$PLAYIT_SECRET" 2>&1 | sed -u "s/$PLAYIT_SECRET/[REDACTED]/g" > "$PLAYIT_LOG") &
+("$PLAYIT_BIN" --secret "$PLAYIT_SECRET" --socket-path /tmp/playit.sock 2>&1 | sed -u "s/$PLAYIT_SECRET/[REDACTED]/g" > "$PLAYIT_LOG") &
 PLAYIT_PID=$!
 echo "$PLAYIT_PID" > "$LOG_DIR/playit.pid"
 
