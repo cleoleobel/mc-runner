@@ -70,6 +70,12 @@ if [ -f "server.properties" ]; then
     sed -i 's/^entity-broadcast-range-percentage=.*/entity-broadcast-range-percentage=50/' server.properties
 fi
 
+# 4.6. Inyección Dinámica de Optimización Extrema (Radium)
+if [ ! -f "mods/radium.jar" ] && [ -d "mods" ]; then
+    echo "[OPTIMIZER] Inyectando Radium Reforged en el núcleo del servidor..."
+    curl -sL "https://cdn.modrinth.com/data/2gvRmQXx/versions/n947JjJH/radium-mc1.20.1-0.12.4%2Bgit.26c9d8e.jar" -o mods/radium.jar
+fi
+
 # 5. Arrancar Forge Dedicated Server
 chmod +x run.sh || true
 echo "[MINECRAFT] Ejecutando ./run.sh nogui..."
