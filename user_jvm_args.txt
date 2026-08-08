@@ -1,0 +1,32 @@
+# Argumentos Extremos de la Máquina Virtual Java (100x NEXUS)
+# Optimizados para JDK 17+ (Forge 1.20.1)
+
+-Xms6G
+-Xmx6G
+
+# --- 1. Algoritmo de Recolección de Basura de Latencia Ultra-Baja (ZGC) ---
+-XX:+UseZGC
+-XX:+ZProactive
+-XX:ZCollectionInterval=5
+-XX:ZAllocationSpikeTolerance=2.0
+
+# --- 2. Optimizaciones de Procesador y Kernel (Large Pages) ---
+-XX:+UnlockExperimentalVMOptions
+-XX:+UseLargePages
+-XX:LargePageSizeInBytes=2m
+
+# --- 3. Vectorización SIMD y Análisis de Escape (IA y Matemáticas) ---
+-XX:+UseVectorCmov
+-XX:+DoEscapeAnalysis
+
+# --- 4. Deduplicación y Manejo de Caché ---
+-XX:+UseStringDeduplication
+-XX:+PerfDisableSharedMem
+-XX:+AlwaysPreTouch
+-XX:+DisableExplicitGC
+
+# --- 5. Hiper-Compilación C2 y Loop Unrolling (1000x JIT) ---
+-XX:+TieredCompilation
+-XX:AllocatePrefetchStyle=1
+-XX:+OptimizeStringConcat
+-XX:+UseCondCardMark
