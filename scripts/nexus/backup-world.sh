@@ -10,10 +10,10 @@ RUN_NUMBER="${GITHUB_RUN_NUMBER:-manual}"
 DATE_STR=$(date +"%Y%m%d_%H%M%S")
 BACKUP_DIR="backups_staging"
 mkdir -p "$BACKUP_DIR"
+mkdir -p session_diagnostics
+echo "UNVERIFIED" > session_diagnostics/status_backup.txt
 
-HISTORICAL_NAME="world-backup-run${RUN_NUMBER}-${DATE_STR}.tar.gz"
-CURRENT_NAME="world-current.tar.gz"
-PREVIOUS_NAME="world-previous.tar.gz"
+# El nombre final del archivo se determinará después de calcular el hash
 
 echo "=================================================="
 echo "   GENERANDO RESPALDO DE MUNDO ROBUSTO NEXUS"
@@ -50,18 +50,23 @@ fi
 HASH=$(sha256sum "$TEMP_BACKUP" | awk '{print $1}')
 echo "[BACKUP HASH] SHA-256: $HASH"
 
+HISTORICAL_NAME="world-run-${RUN_NUMBER}-${HASH}.tar.gz"
+
 # 5. Promover backup temporal a histórico y preparar lote para upload
 cp "$TEMP_BACKUP" "$BACKUP_DIR/$HISTORICAL_NAME"
 
 # Guardar información de verificación
 cat << EOF > "$BACKUP_DIR/backup-info.json"
 {
-  "run_number": "$RUN_NUMBER",
+  "run_id": "$RUN_NUMBER",
   "created_at": "$DATE_STR",
-  "archive": "$HISTORICAL_NAME",
+  "asset": "$HISTORICAL_NAME",
   "sha256": "$HASH"
 }
 EOF
+
+mkdir -p session_diagnostics
+echo "PASS" > session_diagnostics/status_backup.txt
 
 echo "[BACKUP LOCAL SUCCESS] Backup generado exitosamente en $BACKUP_DIR/$HISTORICAL_NAME"
 exit 0

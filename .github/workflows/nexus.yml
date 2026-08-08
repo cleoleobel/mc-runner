@@ -119,34 +119,7 @@ jobs:
           SESSION_MINUTES: ${{ inputs.session_minutes }}
           DEBUG_MODE: ${{ inputs.debug_mode }}
 
-      - name: ETAPA 12 - Publicar Step Summary en GitHub Actions
-        if: always()
-        run: |
-          echo "## 🚀 NEXUS Dedicated Server — Resumen de Ejecución" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Métrica / Componente | Estado |" >> $GITHUB_STEP_SUMMARY
-          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-          echo "| **Versión Modpack** | \`NEXUS $NEXUS_SERVER_VERSION\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Minecraft / Forge** | 1.20.1 / Forge 47.4.0 |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Operación** | \`${{ inputs.operation }}\` |" >> $GITHUB_STEP_SUMMARY
-          
-          # Dynamic status reads (Assuming scripts write to session_diagnostics/status_*.txt)
-          STATUS_SERVER="❌ ERROR"
-          [ -f "session_diagnostics/status_server.txt" ] && STATUS_SERVER=$(cat session_diagnostics/status_server.txt)
-          echo "| **Servidor Minecraft** | $STATUS_SERVER |" >> $GITHUB_STEP_SUMMARY
-          
-          echo "| **Chat de Voz (UDP 24454)** | ✅ Configurado |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Túnel Playit.gg** | ${PLAYIT_SECRET:+'✅ Activo'}${PLAYIT_SECRET:-'⚠️ Desactivado'} |" >> $GITHUB_STEP_SUMMARY
-          
-          STATUS_BACKUP="❌ PENDIENTE / FALLIDO"
-          [ -f "session_diagnostics/status_backup.txt" ] && STATUS_BACKUP=$(cat session_diagnostics/status_backup.txt)
-          echo "| **Persistencia Mundo** | $STATUS_BACKUP |" >> $GITHUB_STEP_SUMMARY
-          
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📊 Recursos del Runner" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          free -h >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+      # (Step Summary movido al final del workflow)
 
       - name: ETAPA 14, 15 & 16 - Apagado Limpio del Servidor
         if: always()
@@ -162,13 +135,37 @@ jobs:
       - name: ETAPA 18 & 19 - Subir Backup a NEXUS STORAGE y Verificar
         if: always()
         run: |
-          mkdir -p session_diagnostics
-          if bash scripts/nexus/upload-world.sh; then
-            echo "✅ Guardado en Storage" > session_diagnostics/status_backup.txt
-          else
-            echo "❌ ERROR AL SUBIR" > session_diagnostics/status_backup.txt
-            exit 1
-          fi
+          bash scripts/nexus/upload-world.sh
+
+      - name: ETAPA 12 - Publicar Step Summary en GitHub Actions
+        if: always()
+        run: |
+          echo "## 🚀 NEXUS Dedicated Server — Resumen de Ejecución" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Métrica / Componente | Estado |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          
+          # Funciones para leer estado dinámico
+          get_status() {
+            local file="session_diagnostics/status_$1.txt"
+            if [ -f "$file" ]; then cat "$file"; else echo "UNVERIFIED"; fi
+          }
+          
+          echo "| FORGE_BOOT | $(get_status server) |" >> $GITHUB_STEP_SUMMARY
+          echo "| CLEAN_STOP | $(get_status stop) |" >> $GITHUB_STEP_SUMMARY
+          echo "| BACKUP | $(get_status backup) |" >> $GITHUB_STEP_SUMMARY
+          echo "| REMOTE_SHA | $(get_status upload_sha) |" >> $GITHUB_STEP_SUMMARY
+          echo "| RESTORE_SHA | $(get_status restore_sha) |" >> $GITHUB_STEP_SUMMARY
+          
+          PLAYIT_STATUS="NOT_CONFIGURED"
+          [ -n "${PLAYIT_SECRET:-}" ] && PLAYIT_STATUS="PASS"
+          echo "| PLAYIT | $PLAYIT_STATUS |" >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Recursos del Runner" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          free -h >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
       - name: ETAPA 20 - Diagnóstico Final y Artefactos
         if: always()

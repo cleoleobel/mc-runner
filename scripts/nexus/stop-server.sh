@@ -15,6 +15,9 @@ echo "=================================================="
 echo "   DETENIENDO SERVIDOR MINECRAFT NEXUS"
 echo "=================================================="
 
+mkdir -p session_diagnostics
+echo "UNVERIFIED" > session_diagnostics/status_stop.txt
+
 # 1. Enviar comando 'stop' si el servidor está corriendo
 if [ -f "$SERVER_PID_FILE" ]; then
     PID=$(cat "$SERVER_PID_FILE")
@@ -62,4 +65,5 @@ fi
 
 rm -f "$FIFO_PATH"
 sync || true
+echo "PASS" > session_diagnostics/status_stop.txt
 echo "[SHUTDOWN COMPLETE] Servidor y túneles detenidos limpiamente."
