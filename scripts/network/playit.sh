@@ -127,7 +127,7 @@ else
 fi
 
 # 5. Detección y verificación de túneles específicos y endpoints
-MC_ENDPOINT=$(grep -iE "25565|minecraft" "$PLAYIT_LOG" | grep -oE "([a-zA-Z0-9.-]+\.(playit\.gg|ply\.gg)(:[0-9]+)?|[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+)" | head -n 1 || true)
+MC_ENDPOINT=$(grep -iE "25565|minecraft" "$PLAYIT_LOG" | grep -oE "([a-zA-Z0-9.-]+\.(playit\.gg|ply\.gg)(:[0-9]+)?)" | head -n 1 || true)
 if [ -n "$MC_ENDPOINT" ]; then
     echo "[PLAYIT] Túnel Minecraft TCP 25565 verificado con endpoint: $MC_ENDPOINT"
     echo "PASS" > "$DIAG_DIR/status_minecraft_tunnel.txt"
@@ -136,7 +136,7 @@ else
     echo "UNVERIFIED" > "$DIAG_DIR/status_minecraft_tunnel.txt"
 fi
 
-VOICE_ENDPOINT=$(grep -iE "24454|voice" "$PLAYIT_LOG" | grep -oE "([a-zA-Z0-9.-]+\.(playit\.gg|ply\.gg)(:[0-9]+)?|[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+)" | head -n 1 || true)
+VOICE_ENDPOINT=$(grep -iE "24454|voice" "$PLAYIT_LOG" | grep -oE "([a-zA-Z0-9.-]+\.(playit\.gg|ply\.gg)(:[0-9]+)?)" | head -n 1 || true)
 
 if [ -n "$VOICE_ENDPOINT" ]; then
     echo "[PLAYIT] Túnel Voice Chat UDP 24454 verificado con endpoint: $VOICE_ENDPOINT"
