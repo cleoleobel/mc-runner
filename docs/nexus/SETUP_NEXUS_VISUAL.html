@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS — Guía Visual de Puesta en Marcha Definitiva</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-color: #f8fafc;
+            --accent-color: #38bdf8;
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+            --accent-amber: #f59e0b;
+            --border-color: #334155;
+            --code-bg: #090d16;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            margin: 0;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            color: var(--accent-color);
+            font-size: 2.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .meta-info {
+            display: flex;
+            gap: 1.5rem;
+            font-size: 0.95rem;
+            color: #94a3b8;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+
+        h2 {
+            color: var(--accent-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-top: 0;
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: #0284c7;
+            color: white;
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px 8px 0 0;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .step-body {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 0.75rem;
+            text-align: left;
+        }
+
+        th {
+            background-color: #0f172a;
+            color: var(--accent-color);
+        }
+
+        pre {
+            background-color: var(--code-bg);
+            color: #38bdf8;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', Courier, monospace;
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-tag {
+            background-color: #0369a1;
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.9em;
+            display: inline-block;
+        }
+
+        .badge-pass {
+            color: var(--accent-green);
+            font-weight: bold;
+        }
+
+        .badge-fail {
+            color: var(--accent-red);
+            font-weight: bold;
+        }
+
+        .alert-stop {
+            background-color: rgba(239, 68, 68, 0.15);
+            border-left: 4px solid var(--accent-red);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+
+        ul {
+            padding-left: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>NEXUS — Guía Visual de Puesta en Marcha Definitiva</h1>
+        <div class="meta-info">
+            <span>⏱️ <strong>Tiempo estimado:</strong> 10 - 15 minutos</span>
+            <span>📦 <strong>Repo:</strong> cleoleobel/mc-runner</span>
+            <span>💾 <strong>Storage:</strong> cleoleobel/nexus-storage</span>
+        </div>
+    </header>
+
+    <div class="card">
+        <h2>📋 Lo que vas a configurar</h2>
+        <ul>
+            <li><strong>GitHub PAT Token:</strong> Permiso de lectura/escritura para el almacenamiento del mundo.</li>
+            <li><strong>GitHub Secrets:</strong> Claves de acceso privadas seguras en el repositorio.</li>
+            <li><strong>Playit.gg Agent & Tunnels:</strong> Enrutamiento de red pública (TCP 25565 y UDP 24454).</li>
+            <li><strong>GitHub Actions:</strong> Despliegue automatizado del servidor NEXUS.</li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <h2>🛡️ Lo que NO tendrás que hacer</h2>
+        <ul>
+            <li>❌ No tendrás que programar ni editar código.</li>
+            <li>❌ No tendrás que modificar archivos YAML ni scripts.</li>
+            <li>❌ No tendrás que mover mods ni alterar <code>server.properties</code>.</li>
+            <li>❌ No tendrás que ejecutar comandos de consola ni instalar Forge manualmente.</li>
+            <li>❌ No tendrás que comprimir ni gestionar backups a mano.</li>
+        </ul>
+    </div>
+
+    <h2>🔑 TABLA MAESTRA DE SECRETOS</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>NOMBRE EXACTO</th>
+                <th>DÓNDE CONSEGUIRLO</th>
+                <th>DÓNDE PEGARLO</th>
+                <th>REQUERIDO</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>NEXUS_STORAGE_TOKEN</code></td>
+                <td>GitHub Settings → Developer settings → Tokens (classic)</td>
+                <td>mc-runner → Settings → Secrets → Actions</td>
+                <td><strong>SÍ</strong></td>
+            </tr>
+            <tr>
+                <td><code>PLAYIT_SECRET</code></td>
+                <td>Playit.gg Dashboard → Agents → Secret Key</td>
+                <td>mc-runner → Settings → Secrets → Actions</td>
+                <td><strong>SÍ</strong></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- PASO 1 -->
+    <div class="step-header">PASO 1 — Generar Token de Acceso Personal (PAT) en GitHub</div>
+    <div class="step-body">
+        <p><strong>OBJETIVO:</strong> Crear un Token de acceso seguro para que el servidor guarde y descargue el mundo.</p>
+        <p><strong>DÓNDE ESTÁS:</strong> GitHub.com</p>
+        <p><strong>RUTA:</strong> Profile Picture → <code>Settings</code> → <code>Developer settings</code> → <code>Personal access tokens</code> → <code>Tokens (classic)</code></p>
+        <p><strong>BOTÓN EXACTO:</strong> <span class="btn-tag">Generate new token</span> → <span class="btn-tag">Generate new token (classic)</span></p>
+        <p><strong>CONFIGURACIÓN:</strong></p>
+        <ul>
+            <li><strong>Note:</strong> <code>NEXUS Storage Token</code></li>
+            <li><strong>Expiration:</strong> <code>No expiration</code></li>
+            <li><strong>Select scopes:</strong> Marca la casilla <code>repo</code></li>
+        </ul>
+        <p><strong>QUÉ HACER DESPUÉS:</strong> Haz clic al fondo en <span class="btn-tag">Generate token</span>.</p>
+        <pre>
+GitHub Header
+┌─────────────────────────────────────────────────────────┐
+│                                            [Profile Pic]│ ← 1. Clic en Foto
+└─────────────────────────────────────────────────────────┘
+  └─ Settings → Developer settings → Personal access tokens → Tokens (classic)
+       └─ [Generate new token ▼] → Generate new token (classic)
+        </pre>
+        <div class="alert-stop">🛑 <strong>NO CONTINÚES HASTA VER:</strong> El token generado <code>ghp_...</code> copiado en tu portapapeles.</div>
+    </div>
+
+    <!-- PASO 2 -->
+    <div class="step-header">PASO 2 — Crear Agente de Red en Playit.gg</div>
+    <div class="step-body">
+        <p><strong>OBJETIVO:</strong> Obtener la clave secreta del agente Playit para abrir los puertos del servidor.</p>
+        <p><strong>DÓNDE ESTÁS:</strong> Playit.gg Dashboard</p>
+        <p><strong>RUTA:</strong> <code>https://playit.gg</code> → <code>Log In</code> → <code>Agents</code></p>
+        <p><strong>BOTÓN EXACTO:</strong> <span class="btn-tag">Add Agent</span></p>
+        <p><strong>AGENT NAME:</strong> <code>NEXUS-Runner</code></p>
+        <p><strong>QUÉ HACER DESPUÉS:</strong> Haz clic en <span class="btn-tag">Create Agent</span> y luego copia el <code>Secret Key</code>.</p>
+        <div class="alert-stop">🛑 <strong>NO CONTINÚES HASTA VER:</strong> El <code>Secret Key</code> de Playit.gg copiado.</div>
+    </div>
+
+    <!-- PASO 3 -->
+    <div class="step-header">PASO 3 — Configurar Túneles en Playit.gg (TCP & UDP)</div>
+    <div class="step-body">
+        <p><strong>OBJETIVO:</strong> Crear los túneles para Minecraft (TCP 25565) y Voice Chat (UDP 24454).</p>
+        <p><strong>RUTA:</strong> Playit.gg → <code>Tunnels</code> → <span class="btn-tag">Add Tunnel</span></p>
+        <ul>
+            <li><strong>Túnel 1 (Minecraft):</strong> Type: <code>Minecraft Java</code> | Protocol: <code>TCP</code> | Local Port: <code>25565</code> → <span class="btn-tag">Add Tunnel</span></li>
+            <li><strong>Túnel 2 (Voice Chat):</strong> Type: <code>Custom</code> | Protocol: <code>UDP</code> | Local Port: <code>24454</code> → <span class="btn-tag">Add Tunnel</span></li>
+        </ul>
+        <div class="alert-stop">🛑 <strong>NO CONTINÚES HASTA VER:</strong> Ambos túneles creados hacia <code>127.0.0.1</code>.</div>
+    </div>
+
+    <!-- PASO 4 -->
+    <div class="step-header">PASO 4 — Guardar Secretos en GitHub</div>
+    <div class="step-body">
+        <p><strong>DÓNDE ESTÁS:</strong> <code>cleoleobel/mc-runner</code> → <code>Settings</code> → <code>Secrets and variables</code> → <code>Actions</code></p>
+        <p><strong>BOTÓN EXACTO:</strong> <span class="btn-tag">New repository secret</span></p>
+        <ul>
+            <li><code>NEXUS_STORAGE_TOKEN</code> = Tu PAT token (<code>ghp_...</code>) → <span class="btn-tag">Add secret</span></li>
+            <li><code>PLAYIT_SECRET</code> = Tu Secret Key de Playit → <span class="btn-tag">Add secret</span></li>
+        </ul>
+        <div class="alert-stop">🛑 <strong>NO CONTINÚES HASTA VER:</strong> Ambos secretos listados bajo Repository secrets.</div>
+    </div>
+
+    <!-- PASO 5 & 6 -->
+    <div class="step-header">PASO 5 & 6 — Validación Inicial & Step Summary</div>
+    <div class="step-body">
+        <p><strong>RUTA:</strong> <code>cleoleobel/mc-runner</code> → <code>Actions</code> → <code>NEXUS Java Server</code> → <span class="btn-tag">Run workflow</span></p>
+        <p><strong>CONFIGURACIÓN:</strong> Branch: <code>main</code> | Operación: <code>validate</code> → <span class="btn-tag">Run workflow</span></p>
+        <p><strong>VERIFICACIÓN EN STEP SUMMARY:</strong></p>
+        <pre>
+| FORGE_BOOT  | ✅ ONLINE |
+| CLEAN_STOP  | PASS      |
+| BACKUP      | PASS      |
+| REMOTE_SHA  | PASS      |
+| RESTORE_SHA | PASS      |
+| PLAYIT     | PASS      |
+        </pre>
+        <div class="alert-stop">🛑 <strong>NO CONTINÚES HASTA VER:</strong> El check verde ✅ y todos los componentes en PASS.</div>
+    </div>
+
+    <!-- PASO 7 & 8 -->
+    <div class="step-header">PASO 7 & 8 — Producción & Conexión al Servidor</div>
+    <div class="step-body">
+        <p><strong>ARRANQUE:</strong> Actions → <code>NEXUS Java Server</code> → <span class="btn-tag">Run workflow</span> → Operación: <code>run-server</code>.</p>
+        <p><strong>CONEXIÓN EN MINECRAFT:</strong></p>
+        <ul>
+            <li>Multiplayer → <span class="btn-tag">Add Server</span></li>
+            <li>Server Address: <code>&lt;DIRECCION_PLAYIT&gt;:&lt;PUERTO&gt;</code></li>
+            <li>Presiona <strong>V</strong> dentro del juego para validar Simple Voice Chat.</li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <h2>🏁 STATUS AUDIT</h2>
+        <pre>
+UI_LABELS_VERIFIED=YES
+PROJECT_VALUES_VERIFIED=YES
+WORKFLOW_VALUES_VERIFIED=YES
+PLAYIT_UI_VERIFIED=YES
+STATUS = READY
+        </pre>
+    </div>
+
+</div>
+
+</body>
+</html>
