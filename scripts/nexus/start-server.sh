@@ -62,6 +62,11 @@ rm -f "$FIFO_PATH"
 mkfifo "$FIFO_PATH"
 exec 3<> "$FIFO_PATH"
 
+# 4.5. Configurar modo No Premium (online-mode=false)
+if [ -f "server.properties" ]; then
+    sed -i 's/^online-mode=true/online-mode=false/' server.properties
+fi
+
 # 5. Arrancar Forge Dedicated Server
 chmod +x run.sh || true
 echo "[MINECRAFT] Ejecutando ./run.sh nogui..."
