@@ -156,6 +156,11 @@ while [ $ELAPSED_SESSION -lt $SESSION_SECONDS ]; do
         echo 'say §c[AVISO CRÍTICO] El servidor se apaga en 1 minuto. Por favor guarden su avance.' > "$FIFO_PATH"
     fi
 
+    # Keep-Alive para evitar que GitHub Actions cierre la máquina por inactividad de consola
+    if [ $((ELAPSED_SESSION % 300)) -eq 0 ] && [ $ELAPSED_SESSION -gt 0 ]; then
+        echo "[KEEP-ALIVE] El servidor sigue corriendo. Tiempo: $((ELAPSED_SESSION / 60)) min."
+    fi
+
     sleep 15
     ELAPSED_SESSION=$((ELAPSED_SESSION+15))
 done
