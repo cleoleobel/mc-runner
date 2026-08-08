@@ -313,6 +313,7 @@ Clic en la ejecución
 | PLAYIT_AGENT | PASS |
 | MINECRAFT_TUNNEL | PASS |
 | VOICE_TUNNEL | PASS |
+| SVC_CONFIG | PASS |
 ```
 
 🛑 **NO CONTINÚES HASTA VER:**  

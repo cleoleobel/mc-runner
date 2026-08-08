@@ -160,6 +160,7 @@ jobs:
           echo "| PLAYIT_AGENT | $(get_status playit_agent) |" >> $GITHUB_STEP_SUMMARY
           echo "| MINECRAFT_TUNNEL | $(get_status minecraft_tunnel) |" >> $GITHUB_STEP_SUMMARY
           echo "| VOICE_TUNNEL | $(get_status voice_tunnel) |" >> $GITHUB_STEP_SUMMARY
+          echo "| SVC_CONFIG | $(get_status svc_config) |" >> $GITHUB_STEP_SUMMARY
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📊 Recursos del Runner" >> $GITHUB_STEP_SUMMARY
