@@ -33,7 +33,7 @@ sync
 TEMP_BACKUP="$BACKUP_DIR/new-world-staging.tar.gz"
 rm -f "$TEMP_BACKUP"
 
-echo "[BACKUP] Comprimiendo ./world a $HISTORICAL_NAME..."
+echo "[BACKUP] Comprimiendo ./world a $TEMP_BACKUP..."
 tar -czf "$TEMP_BACKUP" ./world
 
 # 3. Comprobar integridad criptográfica y del archivo comprimido
