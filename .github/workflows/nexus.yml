@@ -1,0 +1,231 @@
+name: NEXUS Java Server
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "Operación a ejecutar en el servidor"
+        required: true
+        default: "run-server"
+        type: choice
+        options:
+          - "run-server"
+          - "pregen"
+          - "validate"
+      session_minutes:
+        description: "Duración máxima de la sesión en minutos (máx 330)"
+        required: false
+        default: "330"
+      restore_world:
+        description: "Restaurar estado guardado del mundo desde NEXUS STORAGE"
+        required: false
+        default: "yes"
+        type: choice
+        options:
+          - "yes"
+          - "no"
+      debug_mode:
+        description: "Activar modo debug y verbose logging"
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: nexus-java-server
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  STORAGE_REPO: "cleoleobel/nexus-storage"
+  NEXUS_STORAGE_TOKEN: ${{ secrets.NEXUS_STORAGE_TOKEN }}
+  PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
+  NEXUS_SERVER_VERSION: "2026.08.07-01"
+
+jobs:
+  nexus-server:
+    name: Despliegue NEXUS Dedicated Server
+    runs-on: ubuntu-22.04
+    timeout-minutes: 350
+
+    steps:
+      - name: ETAPA 1 - Checkout Repositorio Runner
+        uses: actions/checkout@v4
+
+      - name: ETAPA 1.2 - Validar Secretos y Variables
+        run: |
+          echo "=== VALIDANDO SECRETOS DE INFRAESTRUCTURA NEXUS ==="
+          fallo=0
+          if [ -z "${NEXUS_STORAGE_TOKEN:-}" ]; then
+            echo "::error::Falta el secreto 'NEXUS_STORAGE_TOKEN'. Agregalo en Settings > Secrets > Actions."
+            fallo=1
+          fi
+          if [ -z "${PLAYIT_SECRET:-}" ]; then
+            echo "::warning::PLAYIT_SECRET no configurado. El servidor solo se abrirá localmente."
+          fi
+          if [ "$fallo" -eq 1 ]; then
+            exit 1
+          fi
+          echo "Secretos validados correctamente."
+
+      - name: ETAPA 2 - Diagnóstico del System Runner
+        run: |
+          echo "=================================================="
+          echo "   INFORMACIÓN DEL SISTEMA DEL RUNNER GITHUB"
+          echo "=================================================="
+          echo "CPU Model:"
+          lscpu | grep "Model name\|CPU(s):" || true
+          echo "RAM Total:"
+          free -h
+          echo "Espacio en Disco:"
+          df -h .
+          echo "Kernel y Arquitectura:"
+          uname -a
+          echo "IP Pública Aproximada del Runner:"
+          curl -s https://ifconfig.me || true
+          echo ""
+
+      - name: ETAPA 3 - Instalar Java 17 JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: ETAPA 4 - Descargar Server Bundle desde NEXUS STORAGE
+        run: |
+          chmod +x scripts/nexus/*.sh scripts/network/*.sh
+          bash scripts/nexus/download-bundle.sh
+
+      - name: ETAPA 5 - Verificar SHA-256 del Bundle
+        run: |
+          bash scripts/nexus/verify-bundle.sh
+
+      - name: ETAPA 6 - Extraer Servidor Forge
+        run: |
+          tar -xzf download_bundle/server-bundle.tar.gz -C ./
+          rm -rf download_bundle
+
+      - name: ETAPA 7 - Restaurar Estado Persistente del Mundo
+        run: |
+          bash scripts/nexus/restore-world.sh
+        env:
+          RESTORE_WORLD: ${{ inputs.restore_world }}
+
+      - name: ETAPA 7.4 - Optimización OS (Network & System)
+        run: |
+          echo "Aplicando optimizaciones de Kernel Sysctl..."
+          sudo sysctl -w net.ipv4.tcp_window_scaling=1
+          sudo sysctl -w net.core.rmem_max=16777216
+          sudo sysctl -w net.core.wmem_max=16777216
+          sudo sysctl -w net.ipv4.tcp_rmem="4096 87380 16777216"
+          sudo sysctl -w net.ipv4.tcp_wmem="4096 65536 16777216"
+          sudo sysctl -p || true
+
+      - name: ETAPA 7.5 - Inyección de JVM Flags 1000x y Fixes
+        run: |
+          echo "Inyectando banderas ZGC y C2 en user_jvm_args.txt"
+          cat << 'EOF' > user_jvm_args.txt
+          -XX:+UseZGC
+          -XX:+ZProactive
+          -XX:ZUncommitDelay=300
+          -XX:+UseStringDeduplication
+          -XX:+OptimizeStringConcat
+          -XX:+UseNUMA
+          -XX:+UseTransparentHugePages
+          -XX:+AlwaysPreTouch
+          -XX:+PerfDisableSharedMem
+          -XX:+DisableExplicitGC
+          -XX:MaxInlineLevel=15
+          -XX:MaxVectorSize=32
+          EOF
+          
+          echo "Aplicando parches de dependencias y EULA..."
+          echo "eula=true" > eula.txt
+          
+          echo "Purgando dependencias inválidas de TACZ y Cataclysm..."
+          rm -f mods/lionfishapi-2.8.jar || true
+          wget -q -O mods/lionfishapi-3.0.jar "https://cdn.modrinth.com/data/FoVacERa/versions/CPftDBcY/lionfishapi-3.0.jar" || true
+          rm -f tacz/nexus_weapons.zip || true
+
+      - name: ETAPA 7.6 - Afinación de Procesos (Renice & IONice)
+        run: |
+          # Secuestramos el proceso de Java en segundo plano apenas nazca
+          (
+            while true; do
+              J_PID=$(pgrep -f "java.*server")
+              if [ -n "$J_PID" ]; then
+                echo "Proceso Java detectado ($J_PID). Elevando prioridad a -20..."
+                sudo renice -n -20 -p $J_PID || true
+                sudo ionice -c 1 -n 0 -p $J_PID || true
+                break
+              fi
+              sleep 1
+            done
+          ) &
+
+      - name: ETAPA 8, 9, 10, 11 & 13 - Ejecutar Servidor NEXUS y Mantener Sesión
+        run: |
+          bash scripts/nexus/start-server.sh "${{ inputs.operation }}"
+        env:
+          SESSION_MINUTES: ${{ inputs.session_minutes }}
+          DEBUG_MODE: ${{ inputs.debug_mode }}
+
+      - name: ETAPA 12 - Publicar Step Summary en GitHub Actions
+        if: always()
+        run: |
+          echo "## 🚀 NEXUS Dedicated Server — Resumen de Ejecución" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Métrica / Componente | Estado |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Versión Modpack** | \`NEXUS $NEXUS_SERVER_VERSION\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Minecraft / Forge** | 1.20.1 / Forge 47.4.0 |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Operación** | \`${{ inputs.operation }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Servidor Minecraft** | ✅ OK |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Chat de Voz (UDP 24454)** | ✅ Configurado |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Túnel Playit.gg** | ${PLAYIT_SECRET:+'✅ Activo'}${PLAYIT_SECRET:-'⚠️ Desactivado'} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Persistencia Mundo** | ✅ Guardado en Storage |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Recursos del Runner" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          free -h >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: ETAPA 14, 15 & 16 - Apagado Limpio del Servidor
+        if: always()
+        run: |
+          bash scripts/nexus/stop-server.sh || true
+
+      - name: ETAPA 17 - Empaquetar y Verificar Backup del Mundo
+        if: always()
+        run: |
+          bash scripts/nexus/backup-world.sh || true
+
+      - name: ETAPA 18 & 19 - Subir Backup a NEXUS STORAGE y Verificar
+        if: always()
+        run: |
+          bash scripts/nexus/upload-world.sh || true
+
+      - name: ETAPA 20 - Diagnóstico Final y Artefactos
+        if: always()
+        run: |
+          mkdir -p session_diagnostics
+          cp -f logs/latest.log session_diagnostics/latest.log 2>/dev/null || true
+          cp -f logs/playit.log session_diagnostics/playit.log 2>/dev/null || true
+          if [ -d "crash-reports" ]; then
+            cp -r crash-reports session_diagnostics/ || true
+          fi
+          cat << EOF > session_diagnostics/session-summary.txt
+          NEXUS SESSION SUMMARY
+          Version: $NEXUS_SERVER_VERSION
+          Date: $(date)
+          Operation: ${{ inputs.operation }}
+          EOF
+
+      - name: ETAPA 20.2 - Subir Diagnóstico como Artefacto
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-session-diagnostics-run${{ github.run_number }}
+          path: session_diagnostics/
+          retention-days: 7
