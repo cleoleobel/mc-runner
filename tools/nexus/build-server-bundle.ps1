@@ -25,7 +25,7 @@ $FinalOutputDir = Join-Path $WorkspaceRoot $OutputDir
 # Buscar fuente principal de mods: Instancia activa local primero, fallback a dist/NEXUS_SERVER_READY
 $ClientInstanceMods = "C:\Users\PC\AppData\Roaming\.minecraft\instances\f094d86375724af2bd72f8fffd725379\mods"
 $ServerReadyDir = Join-Path $WorkspaceRoot "dist/NEXUS_SERVER_READY"
-$WorkServerDir = Join-Path $WorkspaceRoot "_work/server"
+$WorkServerDir = Join-Path (Split-Path $WorkspaceRoot -Parent) "server"
 
 $ModSourceDir = $null
 if (Test-Path $ClientInstanceMods) {
@@ -148,7 +148,7 @@ if (Test-Path $DatapackSource) {
 Write-Host "[4/8] Copiando estructura Forge y Librerias..." -ForegroundColor Yellow
 if (Test-Path $WorkServerDir) {
     if (Test-Path (Join-Path $WorkServerDir "libraries")) {
-        Copy-Item -Path (Join-Path $WorkServerDir "libraries") -Destination $StagingDir -Recurse -Force
+        Copy-Item -Path (Join-Path $WorkServerDir "libraries") -Destination (Join-Path $StagingDir "libraries") -Recurse -Force
     }
     if (Test-Path (Join-Path $WorkServerDir "run.sh")) {
         Copy-Item -Path (Join-Path $WorkServerDir "run.sh") -Destination $StagingDir -Force
