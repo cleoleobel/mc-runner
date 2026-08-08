@@ -1,1188 +1,803 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="light">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEXUS Launch Sequence — Guía Interactiva de Puesta en Marcha</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>NEXUS Launch Sequence — Guía Visual Interactiva</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-variant": "#e0e3e6",
+                        "secondary": "#006590",
+                        "surface": "#f7f9fd",
+                        "on-secondary-fixed": "#001e2e",
+                        "secondary-fixed": "#c8e6ff",
+                        "secondary-container": "#2bb8ff",
+                        "on-background": "#181c1f",
+                        "surface-container": "#eceef2",
+                        "primary": "#006c48",
+                        "on-tertiary": "#ffffff",
+                        "surface-bright": "#f7f9fd",
+                        "on-secondary-container": "#004666",
+                        "surface-container-lowest": "#ffffff",
+                        "outline-variant": "#bbcabf",
+                        "on-secondary": "#ffffff",
+                        "outline": "#6c7b71",
+                        "on-surface-variant": "#3c4a41",
+                        "surface-dim": "#d8dade",
+                        "tertiary-fixed": "#d5e3fc",
+                        "surface-container-high": "#e6e8ec",
+                        "inverse-on-surface": "#eff1f5",
+                        "error-container": "#ffdad6",
+                        "on-secondary-fixed-variant": "#004c6d",
+                        "primary-container": "#19c98a",
+                        "inverse-primary": "#41e09e",
+                        "on-error": "#ffffff",
+                        "inverse-surface": "#2d3134",
+                        "surface-container-highest": "#e0e3e6",
+                        "primary-fixed-dim": "#41e09e",
+                        "on-tertiary-fixed-variant": "#3a485b",
+                        "on-surface": "#181c1f",
+                        "on-primary-fixed": "#002113",
+                        "tertiary-fixed-dim": "#b9c7e0",
+                        "surface-container-low": "#f2f4f8",
+                        "on-error-container": "#93000a",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed-variant": "#005235",
+                        "surface-tint": "#006c48",
+                        "background": "#f7f9fd",
+                        "primary-fixed": "#64fdb9",
+                        "tertiary-container": "#a4b2ca",
+                        "on-tertiary-fixed": "#0e1c2e",
+                        "tertiary": "#515f74",
+                        "on-primary-container": "#004e33",
+                        "on-tertiary-container": "#374558",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed-dim": "#87ceff"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "margin-desktop": "48px",
+                        "margin-mobile": "16px",
+                        "container-max": "1200px",
+                        "unit": "4px",
+                        "gutter": "24px"
+                    },
+                    fontFamily: {
+                        "display-lg": ["Montserrat"],
+                        "body-lg": ["Montserrat"],
+                        "headline-md": ["Montserrat"],
+                        "headline-sm": ["Montserrat"],
+                        "body-md": ["Montserrat"],
+                        "label-caps": ["Montserrat"],
+                        "numeric-hero": ["Montserrat"],
+                        "display-lg-mobile": ["Montserrat"]
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        :root {
-            --nx-bg: #0b0f19;
-            --nx-surface: #131c2e;
-            --nx-surface-card: #182238;
-            --nx-surface-hover: #1f2d4a;
-            --nx-text: #f8fafc;
-            --nx-muted: #94a3b8;
-            --nx-subtle: #64748b;
-            --nx-border: #24334d;
-            --nx-border-active: #38bdf8;
-            
-            --nx-primary: #10b981;
-            --nx-primary-hover: #059669;
-            --nx-primary-glow: rgba(16, 185, 129, 0.25);
-            
-            --nx-accent: #38bdf8;
-            --nx-accent-hover: #0284c7;
-            
-            --nx-success: #10b981;
-            --nx-warning: #f59e0b;
-            --nx-danger: #ef4444;
-
-            --nx-radius-sm: 8px;
-            --nx-radius-md: 14px;
-            --nx-radius-lg: 20px;
-            --nx-radius-xl: 28px;
-
-            --nx-transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            * {
-                animation: none !important;
-                transition: none !important;
-            }
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background-color: var(--nx-bg);
-            color: var(--nx-text);
-            line-height: 1.6;
-            padding-bottom: 80px;
-            min-height: 100vh;
-        }
-
-        /* Container & Layout */
-        .nx-app {
-            max-width: 1280px;
-            margin: 0 auto;
-            padding: 20px 24px;
-        }
-
-        /* Sticky Top Header */
-        .nx-sticky-header {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            background: rgba(11, 15, 25, 0.85);
+        body { font-family: 'Montserrat', sans-serif; }
+        .glass-header {
+            background: rgba(247, 249, 253, 0.85);
             backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--nx-border);
-            padding: 12px 24px;
-            margin: -20px -24px 24px -24px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            -webkit-backdrop-filter: blur(12px);
         }
-
-        .nx-sticky-title {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-weight: 700;
-            font-size: 1rem;
-            color: var(--nx-text);
+        .deep-soft-shadow {
+            box-shadow: 0px 4px 20px rgba(20, 32, 51, 0.04);
         }
-
-        .nx-badge-pulse {
-            width: 10px;
-            height: 10px;
-            background: var(--nx-primary);
-            border-radius: 50%;
-            box-shadow: 0 0 10px var(--nx-primary);
+        .active-shadow {
+            box-shadow: 0px 8px 24px rgba(25, 201, 138, 0.15);
         }
-
-        .nx-progress-mini {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .nx-progress-bar-bg {
-            width: 180px;
-            height: 8px;
-            background: var(--nx-surface-card);
-            border-radius: 99px;
-            overflow: hidden;
-            border: 1px solid var(--nx-border);
-        }
-
-        .nx-progress-bar-fill {
-            height: 100%;
-            width: 0%;
-            background: linear-gradient(90deg, var(--nx-accent), var(--nx-primary));
-            transition: var(--nx-transition);
-        }
-
-        /* Hero Banner */
-        .nx-hero {
-            background: linear-gradient(135deg, rgba(19, 28, 46, 0.9), rgba(24, 34, 56, 0.5));
-            border: 1px solid var(--nx-border);
-            border-radius: var(--nx-radius-xl);
-            padding: 40px;
-            margin-bottom: 32px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .nx-hero-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(56, 189, 248, 0.1);
-            border: 1px solid rgba(56, 189, 248, 0.2);
-            color: var(--nx-accent);
-            padding: 6px 14px;
-            border-radius: 99px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-bottom: 16px;
-        }
-
-        .nx-hero h1 {
-            font-size: 2.5rem;
-            font-weight: 800;
-            line-height: 1.2;
-            margin-bottom: 12px;
-            background: linear-gradient(90deg, #ffffff, #94a3b8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .nx-hero p {
-            color: var(--nx-muted);
-            font-size: 1.1rem;
-            max-width: 700px;
-            margin-bottom: 24px;
-        }
-
-        .nx-hero-meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            font-size: 0.9rem;
-            color: var(--nx-muted);
-        }
-
-        .nx-hero-meta-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        /* Main Workspace Grid */
-        .nx-grid {
-            display: grid;
-            grid-template-columns: 320px 1fr;
-            gap: 32px;
-            align-items: start;
-        }
-
-        @media (max-width: 992px) {
-            .nx-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* Mission Path Sidebar */
-        .nx-sidebar {
-            background: var(--nx-surface);
-            border: 1px solid var(--nx-border);
-            border-radius: var(--nx-radius-lg);
-            padding: 24px;
-            position: sticky;
-            top: 80px;
-        }
-
-        .nx-sidebar-title {
-            font-size: 0.9rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--nx-muted);
-            margin-bottom: 20px;
-        }
-
-        .nx-path-list {
-            list-style: none;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            position: relative;
-        }
-
-        .nx-path-list::before {
-            content: '';
+        .path-line {
             position: absolute;
-            top: 20px;
-            bottom: 20px;
-            left: 19px;
+            top: 24px;
+            bottom: 24px;
+            left: 24px;
             width: 2px;
-            background: var(--nx-border);
+            background: #e0e3e6;
+            z-index: 0;
+        }
+        .node {
+            position: relative;
             z-index: 1;
         }
-
-        .nx-path-item {
-            position: relative;
-            z-index: 2;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding: 10px 14px;
-            border-radius: var(--nx-radius-md);
-            cursor: pointer;
-            transition: var(--nx-transition);
-            border: 1px solid transparent;
-            background: transparent;
+        @keyframes orbit {
+            from { transform: rotate(0deg) translateX(80px) rotate(0deg); }
+            to   { transform: rotate(360deg) translateX(80px) rotate(-360deg); }
         }
-
-        .nx-path-item:hover {
-            background: var(--nx-surface-hover);
-        }
-
-        .nx-path-item.active {
-            background: rgba(56, 189, 248, 0.1);
-            border-color: rgba(56, 189, 248, 0.3);
-        }
-
-        .nx-path-node {
-            width: 28px;
-            height: 28px;
+        .spark {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 8px; height: 8px;
             border-radius: 50%;
-            background: var(--nx-surface-card);
-            border: 2px solid var(--nx-border);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: var(--nx-muted);
-            transition: var(--nx-transition);
-            flex-shrink: 0;
+            margin-top: -4px; margin-left: -4px;
+            animation: orbit 4s linear infinite;
         }
-
-        .nx-path-item.active .nx-path-node {
-            border-color: var(--nx-accent);
-            color: var(--nx-accent);
-            box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
-        }
-
-        .nx-path-item.completed .nx-path-node {
-            background: var(--nx-primary);
-            border-color: var(--nx-primary);
-            color: #ffffff;
-        }
-
-        .nx-path-text {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--nx-muted);
-        }
-
-        .nx-path-item.active .nx-path-text {
-            color: var(--nx-text);
-        }
-
-        /* Step Card Main Focus Area */
-        .nx-step-card {
-            background: var(--nx-surface);
-            border: 1px solid var(--nx-border);
-            border-radius: var(--nx-radius-xl);
-            padding: 36px;
-            margin-bottom: 32px;
-            display: none;
-            opacity: 0;
-            transform: translateY(16px);
-            transition: var(--nx-transition);
-        }
-
-        .nx-step-card.active {
-            display: block;
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .nx-step-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 24px;
-            border-bottom: 1px solid var(--nx-border);
-            padding-bottom: 20px;
-        }
-
-        .nx-step-tag {
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--nx-primary);
-            border: 1px solid rgba(16, 185, 129, 0.2);
-            padding: 4px 12px;
-            border-radius: 99px;
-            font-size: 0.85rem;
-            font-weight: 700;
-        }
-
-        .nx-step-title {
-            font-size: 1.6rem;
-            font-weight: 800;
-            color: var(--nx-text);
-            margin-bottom: 8px;
-        }
-
-        .nx-step-desc {
-            color: var(--nx-muted);
-            font-size: 1rem;
-            margin-bottom: 24px;
-        }
-
-        /* Visual Flow Nodes */
-        .nx-flow {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 10px;
-            background: var(--nx-surface-card);
-            border: 1px solid var(--nx-border);
-            padding: 16px 20px;
-            border-radius: var(--nx-radius-md);
-            margin-bottom: 28px;
-        }
-
-        .nx-flow-node {
-            background: var(--nx-surface-hover);
-            border: 1px solid var(--nx-border);
-            color: var(--nx-text);
-            padding: 6px 14px;
-            border-radius: var(--nx-radius-sm);
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-
-        .nx-flow-arrow {
-            color: var(--nx-muted);
-            font-size: 0.9rem;
-        }
-
-        /* Represented Button UI */
-        .nx-ui-preview {
-            background: var(--nx-surface-card);
-            border: 1px dashed var(--nx-border-active);
-            padding: 20px;
-            border-radius: var(--nx-radius-md);
-            margin: 20px 0;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            align-items: flex-start;
-        }
-
-        .nx-ui-preview-label {
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--nx-accent);
-        }
-
-        .nx-mock-btn {
-            background: #238636;
-            color: #ffffff;
-            font-weight: 600;
-            font-size: 0.9rem;
-            padding: 8px 16px;
-            border-radius: 6px;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            border: 1px solid rgba(255,255,255,0.1);
-            user-select: none;
-        }
-
-        .nx-mock-btn-blue {
-            background: #1f6feb;
-        }
-
-        /* Parameter Table & Values */
-        .nx-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-            font-size: 0.9rem;
-        }
-
-        .nx-table th, .nx-table td {
-            padding: 12px 16px;
-            border: 1px solid var(--nx-border);
-            text-align: left;
-        }
-
-        .nx-table th {
-            background: var(--nx-surface-card);
-            color: var(--nx-accent);
-            font-weight: 700;
-        }
-
-        .nx-code-inline {
-            font-family: monospace;
-            background: var(--nx-bg);
-            border: 1px solid var(--nx-border);
-            color: var(--nx-accent);
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.9em;
-        }
-
-        /* Copy Button Block */
-        .nx-copy-box {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            background: var(--nx-bg);
-            border: 1px solid var(--nx-border);
-            padding: 6px 12px;
-            border-radius: var(--nx-radius-sm);
-            margin: 4px 0;
-        }
-
-        .nx-copy-btn {
-            background: var(--nx-surface-hover);
-            border: 1px solid var(--nx-border);
-            color: var(--nx-text);
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--nx-transition);
-        }
-
-        .nx-copy-btn:hover {
-            background: var(--nx-accent);
-            border-color: var(--nx-accent);
-        }
-
-        /* Alert Callouts */
-        .nx-alert {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            border-left: 4px solid var(--nx-danger);
-            padding: 18px;
-            border-radius: var(--nx-radius-md);
-            margin: 24px 0;
-        }
-
-        .nx-alert-title {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--nx-danger);
-            font-weight: 800;
-            font-size: 0.95rem;
-            margin-bottom: 6px;
-        }
-
-        /* Interactive Sub-checklist */
-        .nx-checklist {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin: 20px 0;
-        }
-
-        .nx-check-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: var(--nx-surface-card);
-            border: 1px solid var(--nx-border);
-            padding: 12px 16px;
-            border-radius: var(--nx-radius-md);
-            cursor: pointer;
-            user-select: none;
-            transition: var(--nx-transition);
-        }
-
-        .nx-check-item:hover {
-            border-color: var(--nx-border-active);
-        }
-
-        .nx-check-item input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            accent-color: var(--nx-primary);
-            cursor: pointer;
-        }
-
-        /* Accordion Help */
-        .nx-accordion {
-            border: 1px solid var(--nx-border);
-            border-radius: var(--nx-radius-md);
-            overflow: hidden;
-            margin: 20px 0;
-        }
-
-        .nx-accordion-summary {
-            background: var(--nx-surface-card);
-            padding: 14px 18px;
-            font-weight: 600;
-            font-size: 0.9rem;
-            cursor: pointer;
-            color: var(--nx-muted);
-            user-select: none;
-        }
-
-        .nx-accordion-summary:hover {
-            color: var(--nx-text);
-        }
-
-        .nx-accordion-content {
-            padding: 18px;
-            background: var(--nx-bg);
-            border-top: 1px solid var(--nx-border);
-            font-size: 0.9rem;
-            color: var(--nx-muted);
-        }
-
-        /* Step Footer Navigation Buttons */
-        .nx-step-actions {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-top: 36px;
-            padding-top: 24px;
-            border-top: 1px solid var(--nx-border);
-        }
-
-        .nx-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px 24px;
-            border-radius: var(--nx-radius-md);
-            font-size: 0.95rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: var(--nx-transition);
-            border: 1px solid transparent;
-            min-height: 44px;
-        }
-
-        .nx-btn-primary {
-            background: var(--nx-primary);
-            color: #ffffff;
-            box-shadow: 0 4px 14px var(--nx-primary-glow);
-        }
-
-        .nx-btn-primary:hover {
-            background: var(--nx-primary-hover);
-            transform: translateY(-2px);
-        }
-
-        .nx-btn-secondary {
-            background: var(--nx-surface-card);
-            color: var(--nx-text);
-            border-color: var(--nx-border);
-        }
-
-        .nx-btn-secondary:hover {
-            background: var(--nx-surface-hover);
-        }
-
-        .nx-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none !important;
-            box-shadow: none !important;
-        }
-
-        /* Final Celebration Screen */
-        .nx-celebration {
-            display: none;
-            text-align: center;
-            background: var(--nx-surface);
-            border: 1px solid var(--nx-primary);
-            border-radius: var(--nx-radius-xl);
-            padding: 60px 40px;
-            box-shadow: 0 0 40px var(--nx-primary-glow);
-        }
-
-        .nx-celebration.active {
-            display: block;
-            animation: nxFadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        @keyframes nxFadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        .nx-badge-hero {
-            width: 80px;
-            height: 80px;
-            background: var(--nx-primary);
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.5rem;
-            margin: 0 auto 24px auto;
-            box-shadow: 0 0 30px var(--nx-primary);
-        }
-
-        /* Reset Button Footnote */
-        .nx-reset-btn {
-            background: transparent;
-            border: none;
-            color: var(--nx-subtle);
-            font-size: 0.8rem;
-            cursor: pointer;
-            text-decoration: underline;
-            margin-top: 20px;
-        }
-
-        .nx-reset-btn:hover {
-            color: var(--nx-danger);
-        }
-
-        /* Modal Reset */
-        .nx-modal-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.7);
-            backdrop-filter: blur(6px);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-
-        .nx-modal {
-            background: var(--nx-surface);
-            border: 1px solid var(--nx-border);
-            padding: 32px;
-            border-radius: var(--nx-radius-lg);
-            max-width: 420px;
-            text-align: center;
+        @media (prefers-reduced-motion: reduce) {
+            * { animation: none !important; transition: none !important; }
         }
     </style>
 </head>
-<body>
+<body class="bg-background text-on-surface font-body-md antialiased pb-24 min-h-screen flex flex-col">
 
-<div class="nx-app">
-
-    <!-- Sticky Header -->
-    <header class="nx-sticky-header">
-        <div class="nx-sticky-title">
-            <div class="nx-badge-pulse"></div>
-            <span>NEXUS Launch Sequence</span>
+<!-- Sticky Progress Header -->
+<header class="glass-header docked full-width top-0 sticky z-50 shadow-sm border-b border-outline-variant/30 transition-colors">
+    <div class="flex justify-between items-center w-full px-margin-mobile md:px-margin-desktop py-4 max-w-container-max mx-auto">
+        <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-primary text-[28px]" style="font-variation-settings: 'FILL' 1;">rocket_launch</span>
+            <span class="font-headline-sm text-headline-sm-mobile md:font-headline-md md:text-headline-md font-bold text-primary">NEXUS Core</span>
         </div>
-        <div class="nx-progress-mini">
-            <span id="progressText" style="font-size: 0.85rem; font-weight: 700; color: var(--nx-muted);">0 / 8 pasos</span>
-            <div class="nx-progress-bar-bg">
-                <div id="progressBarFill" class="nx-progress-bar-fill"></div>
+        <div class="hidden md:flex items-center gap-6 flex-1 justify-center max-w-md">
+            <span class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Launch Sequence</span>
+            <div class="flex-1 h-2 bg-surface-variant rounded-full overflow-hidden">
+                <div id="headerProgressFill" class="h-full bg-primary w-[0%] rounded-full transition-all duration-500"></div>
             </div>
-            <button class="nx-reset-btn" onclick="openResetModal()" style="margin: 0;">Reiniciar</button>
+            <span id="headerProgressText" class="font-label-caps text-label-caps text-on-surface-variant">0 DE 8 (0%)</span>
         </div>
-    </header>
-
-    <!-- Hero Banner -->
-    <section class="nx-hero">
-        <div class="nx-hero-pill">⚡ NEXUS DEDICATED INFRASTRUCTURE</div>
-        <h1>Puesta en Marcha del Servidor</h1>
-        <p>Sigue la secuencia de lanzamiento guiada para dejar tu servidor Minecraft 1.20.1 Forge online y accesible con Simple Voice Chat de proximidad.</p>
-        <div class="nx-hero-meta">
-            <div class="nx-hero-meta-item">⏱️ <span>Duración: 10-15 min</span></div>
-            <div class="nx-hero-meta-item">📦 <span>mc-runner</span></div>
-            <div class="nx-hero-meta-item">💾 <span>nexus-storage</span></div>
+        <div class="flex items-center gap-2">
+            <button onclick="openResetModal()" class="text-xs text-on-surface-variant hover:text-error transition-colors px-3 py-1 rounded-full border border-outline-variant/50">
+                Reiniciar
+            </button>
         </div>
-    </section>
+    </div>
+</header>
 
-    <!-- Grid Layout -->
-    <div class="nx-grid">
+<!-- Main Container -->
+<main class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-8 md:py-12 flex-grow w-full">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter lg:gap-16">
 
-        <!-- Sidebar Navigation -->
-        <aside class="nx-sidebar">
-            <div class="nx-sidebar-title">Ruta de Lanzamiento</div>
-            <ul class="nx-path-list" id="pathList">
-                <li class="nx-path-item active" onclick="switchStep(1)">
-                    <div class="nx-path-node">1</div>
-                    <span class="nx-path-text">01. Token GitHub</span>
-                </li>
-                <li class="nx-path-item" onclick="switchStep(2)">
-                    <div class="nx-path-node">2</div>
-                    <span class="nx-path-text">02. Playit Agent</span>
-                </li>
-                <li class="nx-path-item" onclick="switchStep(3)">
-                    <div class="nx-path-node">3</div>
-                    <span class="nx-path-text">03. Túneles Red</span>
-                </li>
-                <li class="nx-path-item" onclick="switchStep(4)">
-                    <div class="nx-path-node">4</div>
-                    <span class="nx-path-text">04. Secrets Repo</span>
-                </li>
-                <li class="nx-path-item" onclick="switchStep(5)">
-                    <div class="nx-path-node">5</div>
-                    <span class="nx-path-text">05. Validación</span>
-                </li>
-                <li class="nx-path-item" onclick="switchStep(6)">
-                    <div class="nx-path-node">6</div>
-                    <span class="nx-path-text">06. Summary</span>
-                </li>
-                <li class="nx-path-item" onclick="switchStep(7)">
-                    <div class="nx-path-node">7</div>
-                    <span class="nx-path-text">07. Producción</span>
-                </li>
-                <li class="nx-path-item" onclick="switchStep(8)">
-                    <div class="nx-path-node">8</div>
-                    <span class="nx-path-text">08. Conexión Juego</span>
-                </li>
-            </ul>
+        <!-- Left Sidebar: Launch Path -->
+        <aside class="hidden lg:block lg:col-span-4 relative">
+            <div class="sticky top-32 bg-surface-container-lowest rounded-[24px] p-6 deep-soft-shadow">
+                <h3 class="font-headline-sm text-headline-sm text-on-surface mb-6">Ruta de Lanzamiento</h3>
+                <div class="relative pl-2">
+                    <div class="path-line"></div>
+                    <div class="flex flex-col gap-6" id="sidebarNodeList">
+                        <!-- Step Nodes generated dynamically or styled -->
+                        <div class="node flex items-center gap-4 group cursor-pointer" onclick="switchStep(1)" id="nodeItem1">
+                            <div class="w-10 h-10 rounded-full bg-surface border-2 border-secondary-container flex items-center justify-center shrink-0 active-shadow node-badge">
+                                <span class="font-label-caps text-label-caps text-secondary-container">1</span>
+                            </div>
+                            <span class="font-body-md text-on-surface font-semibold group-hover:text-primary transition-colors">01. Token GitHub</span>
+                        </div>
+                        <div class="node flex items-center gap-4 group cursor-pointer" onclick="switchStep(2)" id="nodeItem2">
+                            <div class="w-10 h-10 rounded-full bg-surface-container border-2 border-outline-variant flex items-center justify-center shrink-0 node-badge">
+                                <span class="font-label-caps text-label-caps text-outline">2</span>
+                            </div>
+                            <span class="font-body-md text-on-surface-variant group-hover:text-primary transition-colors">02. Playit Agent</span>
+                        </div>
+                        <div class="node flex items-center gap-4 group cursor-pointer" onclick="switchStep(3)" id="nodeItem3">
+                            <div class="w-10 h-10 rounded-full bg-surface-container border-2 border-outline-variant flex items-center justify-center shrink-0 node-badge">
+                                <span class="font-label-caps text-label-caps text-outline">3</span>
+                            </div>
+                            <span class="font-body-md text-on-surface-variant group-hover:text-primary transition-colors">03. Túneles Red</span>
+                        </div>
+                        <div class="node flex items-center gap-4 group cursor-pointer" onclick="switchStep(4)" id="nodeItem4">
+                            <div class="w-10 h-10 rounded-full bg-surface-container border-2 border-outline-variant flex items-center justify-center shrink-0 node-badge">
+                                <span class="font-label-caps text-label-caps text-outline">4</span>
+                            </div>
+                            <span class="font-body-md text-on-surface-variant group-hover:text-primary transition-colors">04. Secrets Repo</span>
+                        </div>
+                        <div class="node flex items-center gap-4 group cursor-pointer" onclick="switchStep(5)" id="nodeItem5">
+                            <div class="w-10 h-10 rounded-full bg-surface-container border-2 border-outline-variant flex items-center justify-center shrink-0 node-badge">
+                                <span class="font-label-caps text-label-caps text-outline">5</span>
+                            </div>
+                            <span class="font-body-md text-on-surface-variant group-hover:text-primary transition-colors">05. Validación</span>
+                        </div>
+                        <div class="node flex items-center gap-4 group cursor-pointer" onclick="switchStep(6)" id="nodeItem6">
+                            <div class="w-10 h-10 rounded-full bg-surface-container border-2 border-outline-variant flex items-center justify-center shrink-0 node-badge">
+                                <span class="font-label-caps text-label-caps text-outline">6</span>
+                            </div>
+                            <span class="font-body-md text-on-surface-variant group-hover:text-primary transition-colors">06. Summary</span>
+                        </div>
+                        <div class="node flex items-center gap-4 group cursor-pointer" onclick="switchStep(7)" id="nodeItem7">
+                            <div class="w-10 h-10 rounded-full bg-surface-container border-2 border-outline-variant flex items-center justify-center shrink-0 node-badge">
+                                <span class="font-label-caps text-label-caps text-outline">7</span>
+                            </div>
+                            <span class="font-body-md text-on-surface-variant group-hover:text-primary transition-colors">07. Producción</span>
+                        </div>
+                        <div class="node flex items-center gap-4 group cursor-pointer" onclick="switchStep(8)" id="nodeItem8">
+                            <div class="w-10 h-10 rounded-full bg-surface-container border-2 border-outline-variant flex items-center justify-center shrink-0 node-badge">
+                                <span class="font-label-caps text-label-caps text-outline">8</span>
+                            </div>
+                            <span class="font-body-md text-on-surface-variant group-hover:text-primary transition-colors">08. Conexión Juego</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </aside>
 
-        <!-- Main Workspace Focus Area -->
-        <main id="mainWorkspace">
+        <!-- Right: Mission Details Cards -->
+        <section class="lg:col-span-8">
 
             <!-- STEP 1 -->
-            <article class="nx-step-card active" id="stepCard1">
-                <div class="nx-step-header">
-                    <span class="nx-step-tag">PASO 01 DE 08</span>
-                    <span style="font-size: 0.85rem; color: var(--nx-muted);">GitHub PAT Token</span>
-                </div>
-                <h2 class="nx-step-title">Generar Token Restringido en GitHub</h2>
-                <p class="nx-step-desc">Crea un Fine-grained Personal Access Token con principio de mínimo privilegio asignado únicamente a <span class="nx-code-inline">cleoleobel/nexus-storage</span>.</p>
-
-                <div class="nx-flow">
-                    <span class="nx-flow-node">Profile Picture</span> <span class="nx-flow-arrow">→</span>
-                    <span class="nx-flow-node">Settings</span> <span class="nx-flow-arrow">→</span>
-                    <span class="nx-flow-node">Developer settings</span> <span class="nx-flow-arrow">→</span>
-                    <span class="nx-flow-node">Personal access tokens</span> <span class="nx-flow-arrow">→</span>
-                    <span class="nx-flow-node">Fine-grained tokens</span>
+            <article class="step-card space-y-6" id="stepCard1">
+                <div>
+                    <div class="inline-flex items-center gap-2 px-4 py-2 bg-secondary-fixed rounded-full mb-6">
+                        <span class="font-label-caps text-label-caps text-on-secondary-fixed tracking-widest uppercase">Misión 01 de 08</span>
+                    </div>
+                    <h1 class="font-display-lg-mobile text-display-lg-mobile md:font-display-lg md:text-display-lg text-on-surface mb-4">Generar Token Restringido en GitHub</h1>
+                    <p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">Crea un Fine-grained Personal Access Token con principio de mínimo privilegio asignado únicamente a <span class="font-mono text-sm bg-surface-variant px-2 py-1 rounded text-on-surface">cleoleobel/nexus-storage</span>.</p>
                 </div>
 
-                <div class="nx-ui-preview">
-                    <span class="nx-ui-preview-label">Así se ve el botón en GitHub</span>
-                    <div class="nx-mock-btn">[ + Generate new token ]</div>
+                <div class="bg-surface-container-lowest rounded-[24px] p-6 deep-soft-shadow space-y-4">
+                    <h4 class="font-headline-sm text-headline-sm text-on-surface">Ruta en GitHub</h4>
+                    <div class="flex flex-wrap items-center gap-2 text-xs font-body-md text-on-surface bg-surface p-3 rounded-xl border border-surface-variant">
+                        <span class="bg-surface-variant px-2 py-1 rounded">Profile Picture</span>
+                        <span class="material-symbols-outlined text-[14px] text-outline">arrow_right_alt</span>
+                        <span class="bg-surface-variant px-2 py-1 rounded">Settings</span>
+                        <span class="material-symbols-outlined text-[14px] text-outline">arrow_right_alt</span>
+                        <span class="bg-surface-variant px-2 py-1 rounded">Developer settings</span>
+                        <span class="material-symbols-outlined text-[14px] text-outline">arrow_right_alt</span>
+                        <span class="bg-surface-variant px-2 py-1 rounded">Personal access tokens</span>
+                        <span class="material-symbols-outlined text-[14px] text-outline">arrow_right_alt</span>
+                        <span class="bg-surface-variant px-2 py-1 rounded">Fine-grained tokens</span>
+                    </div>
+
+                    <div class="bg-secondary-fixed-dim/10 border border-secondary-container/30 rounded-xl p-4 flex flex-col items-center gap-3">
+                        <span class="font-label-caps text-label-caps text-secondary-container self-start">ASÍ SE VE EL BOTÓN EN GITHUB</span>
+                        <button class="bg-[#2da44e] text-white font-body-md text-sm px-4 py-2 rounded-md font-semibold border border-[rgba(27,31,36,0.15)] shadow-sm flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[16px]">add</span> Generate new token
+                        </button>
+                    </div>
                 </div>
 
-                <div class="nx-checklist">
-                    <label class="nx-check-item">
-                        <input type="checkbox" onchange="checkSubItems(1)">
-                        <span>Token name: <span class="nx-code-inline">NEXUS Storage Token</span></span>
-                    </label>
-                    <label class="nx-check-item">
-                        <input type="checkbox" onchange="checkSubItems(1)">
-                        <span>Resource owner: <span class="nx-code-inline">cleoleobel</span></span>
-                    </label>
-                    <label class="nx-check-item">
-                        <input type="checkbox" onchange="checkSubItems(1)">
-                        <span>Repository access: <span class="nx-code-inline">Only select repositories</span> → <span class="nx-code-inline">cleoleobel/nexus-storage</span></span>
-                    </label>
-                    <label class="nx-check-item">
-                        <input type="checkbox" onchange="checkSubItems(1)">
-                        <span>Permissions → Contents: <span class="nx-code-inline">Read and write</span></span>
-                    </label>
+                <div class="bg-surface-container-lowest rounded-[24px] p-6 deep-soft-shadow space-y-4">
+                    <h4 class="font-headline-sm text-headline-sm text-on-surface">Configuración del Token</h4>
+                    <div class="flex flex-col gap-3">
+                        <label class="flex items-start gap-4 p-4 rounded-[20px] border border-surface-variant hover:bg-surface transition-colors cursor-pointer">
+                            <input type="checkbox" class="w-6 h-6 rounded-full border-2 border-outline text-primary focus:ring-primary mt-1" onchange="checkSubItems(1)">
+                            <div class="flex-1">
+                                <span class="font-headline-sm text-[16px] text-on-surface">Token name</span>
+                                <div class="flex items-center justify-between bg-surface-variant/50 p-2 rounded-lg border border-outline-variant/30 mt-1">
+                                    <code class="font-mono text-xs text-on-surface">NEXUS Storage Token</code>
+                                    <button onclick="copyToClipboard('NEXUS Storage Token', this)" class="text-secondary hover:text-primary p-1">
+                                        <span class="material-symbols-outlined text-[18px]">content_copy</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </label>
+                        <label class="flex items-start gap-4 p-4 rounded-[20px] border border-surface-variant hover:bg-surface transition-colors cursor-pointer">
+                            <input type="checkbox" class="w-6 h-6 rounded-full border-2 border-outline text-primary focus:ring-primary mt-1" onchange="checkSubItems(1)">
+                            <div class="flex-1">
+                                <span class="font-headline-sm text-[16px] text-on-surface">Resource owner & Access</span>
+                                <p class="text-xs text-on-surface-variant mt-1">Owner: <span class="font-mono bg-surface-variant px-1 rounded">cleoleobel</span> | Repository access: <span class="font-mono bg-surface-variant px-1 rounded">Only select repositories</span> → <span class="font-mono bg-surface-variant px-1 rounded">cleoleobel/nexus-storage</span></p>
+                            </div>
+                        </label>
+                        <label class="flex items-start gap-4 p-4 rounded-[20px] border border-surface-variant hover:bg-surface transition-colors cursor-pointer">
+                            <input type="checkbox" class="w-6 h-6 rounded-full border-2 border-outline text-primary focus:ring-primary mt-1" onchange="checkSubItems(1)">
+                            <div class="flex-1">
+                                <span class="font-headline-sm text-[16px] text-on-surface">Repository Permissions</span>
+                                <p class="text-xs text-on-surface-variant mt-1">Contents: <span class="font-mono bg-surface-variant px-1 rounded">Read and write</span></p>
+                            </div>
+                        </label>
+                    </div>
                 </div>
 
-                <div class="nx-alert">
-                    <div class="nx-alert-title">🛑 NO CONTINÚES HASTA VER</div>
-                    <p>El token generado empezando por <span class="nx-code-inline">github_pat_...</span> copiado en tu portapapeles.</p>
+                <div class="p-6 bg-error-container/30 border border-error/30 rounded-[24px]">
+                    <div class="flex items-center gap-2 text-error font-bold mb-2">
+                        <span class="material-symbols-outlined">stop_circle</span>
+                        <span>NO CONTINÚES HASTA VER:</span>
+                    </div>
+                    <p class="text-sm text-on-surface-variant">El token generado empezando por <span class="font-mono bg-surface-variant px-1 rounded text-on-surface">github_pat_...</span> copiado en tu portapapeles.</p>
                 </div>
 
-                <div class="nx-step-actions">
-                    <button class="nx-btn nx-btn-secondary" disabled>← Anterior</button>
-                    <button class="nx-btn nx-btn-primary" id="btnComplete1" onclick="completeStep(1)">Marcar Paso 1 Completado ✓</button>
+                <div class="p-6 bg-surface-variant/30 rounded-[24px] border border-outline-variant/30 text-center">
+                    <button id="btnComplete1" onclick="completeStep(1)" class="w-full md:w-auto px-8 py-4 bg-primary text-on-primary font-headline-sm text-headline-sm rounded-[18px] active-shadow hover:-translate-y-0.5 transition-all inline-flex items-center justify-center gap-3">
+                        <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        <span>MARCAR PASO 1 COMPLETADO ✓</span>
+                    </button>
                 </div>
             </article>
 
             <!-- STEP 2 -->
-            <article class="nx-step-card" id="stepCard2">
-                <div class="nx-step-header">
-                    <span class="nx-step-tag">PASO 02 DE 08</span>
-                    <span style="font-size: 0.85rem; color: var(--nx-muted);">Playit Agent</span>
-                </div>
-                <h2 class="nx-step-title">Crear Agente de Red en Playit.gg</h2>
-                <p class="nx-step-desc">Crea el agente dedicado en Playit.gg para obtener la clave secreta de conexión.</p>
-
-                <div class="nx-flow">
-                    <span class="nx-flow-node">playit.gg</span> <span class="nx-flow-arrow">→</span>
-                    <span class="nx-flow-node">Log In</span> <span class="nx-flow-arrow">→</span>
-                    <span class="nx-flow-node">Agents</span>
+            <article class="step-card space-y-6 hidden" id="stepCard2">
+                <div>
+                    <div class="inline-flex items-center gap-2 px-4 py-2 bg-secondary-fixed rounded-full mb-6">
+                        <span class="font-label-caps text-label-caps text-on-secondary-fixed tracking-widest uppercase">Misión 02 de 08</span>
+                    </div>
+                    <h1 class="font-display-lg-mobile text-display-lg-mobile md:font-display-lg md:text-display-lg text-on-surface mb-4">Crear Agente de Red en Playit.gg</h1>
+                    <p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">Crea el agente dedicado en Playit.gg y obtiene la clave secreta de conexión.</p>
                 </div>
 
-                <div class="nx-ui-preview">
-                    <span class="nx-ui-preview-label">Así se ve el botón en Playit.gg</span>
-                    <div class="nx-mock-btn nx-mock-btn-blue">[ Create Agent ]</div>
+                <div class="bg-surface-container-lowest rounded-[24px] p-6 deep-soft-shadow space-y-4">
+                    <h4 class="font-headline-sm text-headline-sm text-on-surface">Ruta en Playit.gg</h4>
+                    <div class="flex flex-wrap items-center gap-2 text-xs font-body-md text-on-surface bg-surface p-3 rounded-xl border border-surface-variant">
+                        <span class="bg-surface-variant px-2 py-1 rounded">https://playit.gg</span>
+                        <span class="material-symbols-outlined text-[14px] text-outline">arrow_right_alt</span>
+                        <span class="bg-surface-variant px-2 py-1 rounded">Log In</span>
+                        <span class="material-symbols-outlined text-[14px] text-outline">arrow_right_alt</span>
+                        <span class="bg-surface-variant px-2 py-1 rounded">Agents</span>
+                    </div>
+
+                    <div class="bg-secondary-fixed-dim/10 border border-secondary-container/30 rounded-xl p-4 flex flex-col items-center gap-3">
+                        <span class="font-label-caps text-label-caps text-secondary-container self-start">ASÍ SE VE EL BOTÓN EN PLAYIT</span>
+                        <button class="bg-[#1f6feb] text-white font-body-md text-sm px-4 py-2 rounded-md font-semibold shadow-sm flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[16px]">add</span> Create Agent
+                        </button>
+                    </div>
                 </div>
 
-                <div class="nx-checklist">
-                    <label class="nx-check-item">
-                        <input type="checkbox" onchange="checkSubItems(2)">
-                        <span>Agent Name: <span class="nx-code-inline">NEXUS-Runner</span></span>
-                    </label>
-                    <label class="nx-check-item">
-                        <input type="checkbox" onchange="checkSubItems(2)">
-                        <span>Haz clic en <span class="nx-code-inline">Create Agent</span></span>
-                    </label>
-                    <label class="nx-check-item">
-                        <input type="checkbox" onchange="checkSubItems(2)">
-                        <span>Copia la clave del campo <span class="nx-code-inline">Secret Key</span></span>
-                    </label>
+                <div class="bg-surface-container-lowest rounded-[24px] p-6 deep-soft-shadow space-y-4">
+                    <div class="flex flex-col gap-3">
+                        <label class="flex items-start gap-4 p-4 rounded-[20px] border border-surface-variant hover:bg-surface transition-colors cursor-pointer">
+                            <input type="checkbox" class="w-6 h-6 rounded-full border-2 border-outline text-primary focus:ring-primary mt-1" onchange="checkSubItems(2)">
+                            <div class="flex-1">
+                                <span class="font-headline-sm text-[16px] text-on-surface">Agent Name</span>
+                                <div class="flex items-center justify-between bg-surface-variant/50 p-2 rounded-lg border border-outline-variant/30 mt-1">
+                                    <code class="font-mono text-xs text-on-surface">NEXUS-Runner</code>
+                                    <button onclick="copyToClipboard('NEXUS-Runner', this)" class="text-secondary hover:text-primary p-1">
+                                        <span class="material-symbols-outlined text-[18px]">content_copy</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </label>
+                        <label class="flex items-start gap-4 p-4 rounded-[20px] border border-surface-variant hover:bg-surface transition-colors cursor-pointer">
+                            <input type="checkbox" class="w-6 h-6 rounded-full border-2 border-outline text-primary focus:ring-primary mt-1" onchange="checkSubItems(2)">
+                            <div class="flex-1">
+                                <span class="font-headline-sm text-[16px] text-on-surface">Obtener Secret Key</span>
+                                <p class="text-xs text-on-surface-variant mt-1">Haz clic en <span class="font-mono bg-surface-variant px-1 rounded">Create Agent</span> y copia la clave del campo <span class="font-mono bg-surface-variant px-1 rounded">Secret Key</span>.</p>
+                            </div>
+                        </label>
+                    </div>
                 </div>
 
-                <div class="nx-alert">
-                    <div class="nx-alert-title">🛑 NO CONTINÚES HASTA VER</div>
-                    <p>La clave <span class="nx-code-inline">Secret Key</span> de Playit.gg copiada.</p>
+                <div class="p-6 bg-error-container/30 border border-error/30 rounded-[24px]">
+                    <div class="flex items-center gap-2 text-error font-bold mb-2">
+                        <span class="material-symbols-outlined">stop_circle</span>
+                        <span>NO CONTINÚES HASTA VER:</span>
+                    </div>
+                    <p class="text-sm text-on-surface-variant">La clave <span class="font-mono bg-surface-variant px-1 rounded text-on-surface">Secret Key</span> de Playit.gg copiada en tu portapapeles.</p>
                 </div>
 
-                <div class="nx-step-actions">
-                    <button class="nx-btn nx-btn-secondary" onclick="switchStep(1)">← Anterior</button>
-                    <button class="nx-btn nx-btn-primary" id="btnComplete2" onclick="completeStep(2)">Marcar Paso 2 Completado ✓</button>
+                <div class="p-6 bg-surface-variant/30 rounded-[24px] border border-outline-variant/30 text-center flex justify-between gap-4">
+                    <button onclick="switchStep(1)" class="px-6 py-4 bg-surface-container text-on-surface font-headline-sm rounded-[18px]">← Anterior</button>
+                    <button id="btnComplete2" onclick="completeStep(2)" class="px-8 py-4 bg-primary text-on-primary font-headline-sm rounded-[18px] active-shadow inline-flex items-center gap-2">
+                        <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        <span>MARCAR PASO 2 COMPLETADO ✓</span>
+                    </button>
                 </div>
             </article>
 
             <!-- STEP 3 -->
-            <article class="nx-step-card" id="stepCard3">
-                <div class="nx-step-header">
-                    <span class="nx-step-tag">PASO 03 DE 08</span>
-                    <span style="font-size: 0.85rem; color: var(--nx-muted);">Playit Tunnels</span>
-                </div>
-                <h2 class="nx-step-title">Configurar Túneles en Playit.gg</h2>
-                <p class="nx-step-desc">Crea los dos túneles con los presets oficiales de Playit para Minecraft Java y Simple Voice Chat.</p>
-
-                <div class="nx-flow">
-                    <span class="nx-flow-node">Playit Dashboard</span> <span class="nx-flow-arrow">→</span>
-                    <span class="nx-flow-node">Tunnels</span> <span class="nx-flow-arrow">→</span>
-                    <span class="nx-flow-node">Add Tunnel</span>
+            <article class="step-card space-y-6 hidden" id="stepCard3">
+                <div>
+                    <div class="inline-flex items-center gap-2 px-4 py-2 bg-secondary-fixed rounded-full mb-6">
+                        <span class="font-label-caps text-label-caps text-on-secondary-fixed tracking-widest uppercase">Misión 03 de 08</span>
+                    </div>
+                    <h1 class="font-display-lg-mobile text-display-lg-mobile md:font-display-lg md:text-display-lg text-on-surface mb-4">Configurar Túneles en Playit.gg</h1>
+                    <p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">Crea los dos túneles con los presets oficiales de Playit para Minecraft Java (TCP 25565) y Simple Voice Chat (UDP 24454).</p>
                 </div>
 
-                <table class="nx-table">
-                    <thead>
-                        <tr>
-                            <th>SERVICIO</th>
-                            <th>PRESET EXACTO EN PLAYIT</th>
-                            <th>IP LOCAL</th>
-                            <th>PUERTO LOCAL</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Minecraft Java</td>
-                            <td><span class="nx-code-inline">Minecraft Java</span></td>
-                            <td><div class="nx-copy-box"><span>127.0.0.1</span><button class="nx-copy-btn" onclick="copyText('127.0.0.1', this)">Copiar</button></div></td>
-                            <td><div class="nx-copy-box"><span>25565</span><button class="nx-copy-btn" onclick="copyText('25565', this)">Copiar</button></div></td>
-                        </tr>
-                        <tr>
-                            <td>Simple Voice Chat</td>
-                            <td><span class="nx-code-inline">MC: Simple Voice Chat</span></td>
-                            <td><div class="nx-copy-box"><span>127.0.0.1</span><button class="nx-copy-btn" onclick="copyText('127.0.0.1', this)">Copiar</button></div></td>
-                            <td><div class="nx-copy-box"><span>24454</span><button class="nx-copy-btn" onclick="copyText('24454', this)">Copiar</button></div></td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Route A: Minecraft -->
+                    <div class="bg-surface-container-lowest rounded-[24px] p-6 deep-soft-shadow border border-outline-variant/50">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
+                                <span class="material-symbols-outlined">sports_esports</span>
+                            </div>
+                            <div>
+                                <h3 class="font-headline-sm text-on-surface">Minecraft Java</h3>
+                                <span class="text-xs text-on-surface-variant font-mono">Preset: Minecraft Java</span>
+                            </div>
+                        </div>
+                        <div class="space-y-3 text-xs">
+                            <div class="flex justify-between items-center bg-surface p-2 rounded border border-outline-variant/30">
+                                <span>Local IP: <code class="font-mono font-bold">127.0.0.1</code></span>
+                                <button onclick="copyToClipboard('127.0.0.1', this)" class="text-secondary"><span class="material-symbols-outlined text-sm">content_copy</span></button>
+                            </div>
+                            <div class="flex justify-between items-center bg-surface p-2 rounded border border-outline-variant/30">
+                                <span>Local Port: <code class="font-mono font-bold">25565</code></span>
+                                <button onclick="copyToClipboard('25565', this)" class="text-secondary"><span class="material-symbols-outlined text-sm">content_copy</span></button>
+                            </div>
+                        </div>
+                    </div>
 
-                <div class="nx-checklist">
-                    <label class="nx-check-item">
-                        <input type="checkbox" onchange="checkSubItems(3)">
-                        <span>Túnel 1 creado: <span class="nx-code-inline">Minecraft Java</span> → TCP 25565</span>
-                    </label>
-                    <label class="nx-check-item">
-                        <input type="checkbox" onchange="checkSubItems(3)">
-                        <span>Túnel 2 creado: <span class="nx-code-inline">MC: Simple Voice Chat</span> → UDP 24454</span>
-                    </label>
+                    <!-- Route B: Voice Chat -->
+                    <div class="bg-surface-container-lowest rounded-[24px] p-6 deep-soft-shadow border border-outline-variant/50">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center">
+                                <span class="material-symbols-outlined">mic</span>
+                            </div>
+                            <div>
+                                <h3 class="font-headline-sm text-on-surface">Simple Voice Chat</h3>
+                                <span class="text-xs text-on-surface-variant font-mono">Preset: MC: Simple Voice Chat</span>
+                            </div>
+                        </div>
+                        <div class="space-y-3 text-xs">
+                            <div class="flex justify-between items-center bg-surface p-2 rounded border border-outline-variant/30">
+                                <span>Local IP: <code class="font-mono font-bold">127.0.0.1</code></span>
+                                <button onclick="copyToClipboard('127.0.0.1', this)" class="text-primary"><span class="material-symbols-outlined text-sm">content_copy</span></button>
+                            </div>
+                            <div class="flex justify-between items-center bg-surface p-2 rounded border border-outline-variant/30">
+                                <span>Local Port: <code class="font-mono font-bold">24454</code></span>
+                                <button onclick="copyToClipboard('24454', this)" class="text-primary"><span class="material-symbols-outlined text-sm">content_copy</span></button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="nx-alert">
-                    <div class="nx-alert-title">🛑 NO CONTINÚES HASTA VER</div>
-                    <p>Ambos túneles creados en el dashboard de Playit.gg apuntando a <span class="nx-code-inline">127.0.0.1</span>.</p>
+                <div class="bg-surface-container-lowest rounded-[24px] p-6 deep-soft-shadow space-y-4">
+                    <div class="flex flex-col gap-3">
+                        <label class="flex items-start gap-4 p-4 rounded-[20px] border border-surface-variant hover:bg-surface transition-colors cursor-pointer">
+                            <input type="checkbox" class="w-6 h-6 rounded-full border-2 border-outline text-primary focus:ring-primary mt-1" onchange="checkSubItems(3)">
+                            <div class="flex-1">
+                                <span class="font-headline-sm text-[16px] text-on-surface">Túnel 1 Creado</span>
+                                <p class="text-xs text-on-surface-variant mt-1">Preset: <span class="font-mono bg-surface-variant px-1 rounded">Minecraft Java</span> | TCP 25565</p>
+                            </div>
+                        </label>
+                        <label class="flex items-start gap-4 p-4 rounded-[20px] border border-surface-variant hover:bg-surface transition-colors cursor-pointer">
+                            <input type="checkbox" class="w-6 h-6 rounded-full border-2 border-outline text-primary focus:ring-primary mt-1" onchange="checkSubItems(3)">
+                            <div class="flex-1">
+                                <span class="font-headline-sm text-[16px] text-on-surface">Túnel 2 Creado</span>
+                                <p class="text-xs text-on-surface-variant mt-1">Preset: <span class="font-mono bg-surface-variant px-1 rounded">MC: Simple Voice Chat</span> | UDP 24454</p>
+                            </div>
+                        </label>
+                    </div>
                 </div>
 
-                <div class="nx-step-actions">
-                    <button class="nx-btn nx-btn-secondary" onclick="switchStep(2)">← Anterior</button>
-                    <button class="nx-btn nx-btn-primary" id="btnComplete3" onclick="completeStep(3)">Marcar Paso 3 Completado ✓</button>
+                <div class="p-6 bg-error-container/30 border border-error/30 rounded-[24px]">
+                    <div class="flex items-center gap-2 text-error font-bold mb-2">
+                        <span class="material-symbols-outlined">stop_circle</span>
+                        <span>NO CONTINÚES HASTA VER:</span>
+                    </div>
+                    <p class="text-sm text-on-surface-variant">Ambos túneles activos en el dashboard de Playit.gg apuntando a <span class="font-mono bg-surface-variant px-1 rounded text-on-surface">127.0.0.1</span>.</p>
+                </div>
+
+                <div class="p-6 bg-surface-variant/30 rounded-[24px] border border-outline-variant/30 text-center flex justify-between gap-4">
+                    <button onclick="switchStep(2)" class="px-6 py-4 bg-surface-container text-on-surface font-headline-sm rounded-[18px]">← Anterior</button>
+                    <button id="btnComplete3" onclick="completeStep(3)" class="px-8 py-4 bg-primary text-on-primary font-headline-sm rounded-[18px] active-shadow inline-flex items-center gap-2">
+                        <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        <span>MARCAR PASO 3 COMPLETADO ✓</span>
+                    </button>
                 </div>
             </article>
 
             <!-- STEP 4 -->
-            <article class="nx-step-card" id="stepCard4">
-                <div class="nx-step-header">
-                    <span class="nx-step-tag">PASO 04 DE 08</span>
-                    <span style="font-size: 0.85rem; color: var(--nx-muted);">GitHub Repository Secrets</span>
-                </div>
-                <h2 class="nx-step-title">Guardar Secretos en el Repositorio</h2>
-                <p class="nx-step-desc">Registra las credenciales en los secretos del repositorio de GitHub.</p>
-
-                <div class="nx-flow">
-                    <span class="nx-flow-node">cleoleobel/mc-runner</span> <span class="nx-flow-arrow">→</span>
-                    <span class="nx-flow-node">Settings</span> <span class="nx-flow-arrow">→</span>
-                    <span class="nx-flow-node">Secrets and variables</span> <span class="nx-flow-arrow">→</span>
-                    <span class="nx-flow-node">Actions</span>
+            <article class="step-card space-y-6 hidden" id="stepCard4">
+                <div>
+                    <div class="inline-flex items-center gap-2 px-4 py-2 bg-secondary-fixed rounded-full mb-6">
+                        <span class="font-label-caps text-label-caps text-on-secondary-fixed tracking-widest uppercase">Misión 04 de 08</span>
+                    </div>
+                    <h1 class="font-display-lg-mobile text-display-lg-mobile md:font-display-lg md:text-display-lg text-on-surface mb-4">Guardar Secretos en el Repositorio</h1>
+                    <p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">Registra las credenciales en los secretos del repositorio de GitHub <span class="font-mono text-sm bg-surface-variant px-2 py-1 rounded text-on-surface">cleoleobel/mc-runner</span>.</p>
                 </div>
 
-                <div class="nx-ui-preview">
-                    <span class="nx-ui-preview-label">Así se ve el botón en GitHub</span>
-                    <div class="nx-mock-btn">[ New repository secret ]</div>
+                <div class="bg-surface-container-lowest rounded-[24px] p-6 deep-soft-shadow space-y-4">
+                    <h4 class="font-headline-sm text-headline-sm text-on-surface">Ruta en GitHub</h4>
+                    <div class="flex flex-wrap items-center gap-2 text-xs font-body-md text-on-surface bg-surface p-3 rounded-xl border border-surface-variant">
+                        <span class="bg-surface-variant px-2 py-1 rounded">cleoleobel/mc-runner</span>
+                        <span class="material-symbols-outlined text-[14px] text-outline">arrow_right_alt</span>
+                        <span class="bg-surface-variant px-2 py-1 rounded">Settings</span>
+                        <span class="material-symbols-outlined text-[14px] text-outline">arrow_right_alt</span>
+                        <span class="bg-surface-variant px-2 py-1 rounded">Secrets and variables</span>
+                        <span class="material-symbols-outlined text-[14px] text-outline">arrow_right_alt</span>
+                        <span class="bg-surface-variant px-2 py-1 rounded">Actions</span>
+                    </div>
+
+                    <div class="bg-secondary-fixed-dim/10 border border-secondary-container/30 rounded-xl p-4 flex flex-col items-center gap-3">
+                        <span class="font-label-caps text-label-caps text-secondary-container self-start">ASÍ SE VE EL BOTÓN EN GITHUB</span>
+                        <button class="bg-[#2da44e] text-white font-body-md text-sm px-4 py-2 rounded-md font-semibold shadow-sm flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[16px]">add</span> New repository secret
+                        </button>
+                    </div>
                 </div>
 
-                <table class="nx-table">
-                    <thead>
-                        <tr>
-                            <th>NOMBRE EXACTO EN GITHUB</th>
-                            <th>VALOR QUE DEBES PEGAR</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><div class="nx-copy-box"><span>NEXUS_STORAGE_TOKEN</span><button class="nx-copy-btn" onclick="copyText('NEXUS_STORAGE_TOKEN', this)">Copiar Nombre</button></div></td>
-                            <td>Pegar token <span class="nx-code-inline">github_pat_...</span> generado en Paso 1</td>
-                        </tr>
-                        <tr>
-                            <td><div class="nx-copy-box"><span>PLAYIT_SECRET</span><button class="nx-copy-btn" onclick="copyText('PLAYIT_SECRET', this)">Copiar Nombre</button></div></td>
-                            <td>Pegar clave <span class="nx-code-inline">Secret Key</span> copiada en Paso 2</td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                <div class="nx-checklist">
-                    <label class="nx-check-item">
-                        <input type="checkbox" onchange="checkSubItems(4)">
-                        <span>Secret <span class="nx-code-inline">NEXUS_STORAGE_TOKEN</span> guardado</span>
-                    </label>
-                    <label class="nx-check-item">
-                        <input type="checkbox" onchange="checkSubItems(4)">
-                        <span>Secret <span class="nx-code-inline">PLAYIT_SECRET</span> guardado</span>
-                    </label>
+                <div class="bg-surface-container-lowest rounded-[24px] p-6 deep-soft-shadow space-y-4">
+                    <div class="flex flex-col gap-3">
+                        <label class="flex items-start gap-4 p-4 rounded-[20px] border border-surface-variant hover:bg-surface transition-colors cursor-pointer">
+                            <input type="checkbox" class="w-6 h-6 rounded-full border-2 border-outline text-primary focus:ring-primary mt-1" onchange="checkSubItems(4)">
+                            <div class="flex-1">
+                                <span class="font-headline-sm text-[16px] text-on-surface">NEXUS_STORAGE_TOKEN</span>
+                                <p class="text-xs text-on-surface-variant mt-1">Pega el token <span class="font-mono bg-surface-variant px-1 rounded">github_pat_...</span> generado en el Paso 1.</p>
+                            </div>
+                        </label>
+                        <label class="flex items-start gap-4 p-4 rounded-[20px] border border-surface-variant hover:bg-surface transition-colors cursor-pointer">
+                            <input type="checkbox" class="w-6 h-6 rounded-full border-2 border-outline text-primary focus:ring-primary mt-1" onchange="checkSubItems(4)">
+                            <div class="flex-1">
+                                <span class="font-headline-sm text-[16px] text-on-surface">PLAYIT_SECRET</span>
+                                <p class="text-xs text-on-surface-variant mt-1">Pega la clave <span class="font-mono bg-surface-variant px-1 rounded">Secret Key</span> copiada en el Paso 2.</p>
+                            </div>
+                        </label>
+                    </div>
                 </div>
 
-                <div class="nx-alert">
-                    <div class="nx-alert-title">🛑 NO CONTINÚES HASTA VER</div>
-                    <p>Ambos secretos listados bajo la sección <strong>Repository secrets</strong>.</p>
+                <div class="p-6 bg-error-container/30 border border-error/30 rounded-[24px]">
+                    <div class="flex items-center gap-2 text-error font-bold mb-2">
+                        <span class="material-symbols-outlined">stop_circle</span>
+                        <span>NO CONTINÚES HASTA VER:</span>
+                    </div>
+                    <p class="text-sm text-on-surface-variant"><span class="font-mono bg-surface-variant px-1 rounded text-on-surface">NEXUS_STORAGE_TOKEN</span> y <span class="font-mono bg-surface-variant px-1 rounded text-on-surface">PLAYIT_SECRET</span> presentes en la lista Repository secrets.</p>
                 </div>
 
-                <div class="nx-step-actions">
-                    <button class="nx-btn nx-btn-secondary" onclick="switchStep(3)">← Anterior</button>
-                    <button class="nx-btn nx-btn-primary" id="btnComplete4" onclick="completeStep(4)">Marcar Paso 4 Completado ✓</button>
+                <div class="p-6 bg-surface-variant/30 rounded-[24px] border border-outline-variant/30 text-center flex justify-between gap-4">
+                    <button onclick="switchStep(3)" class="px-6 py-4 bg-surface-container text-on-surface font-headline-sm rounded-[18px]">← Anterior</button>
+                    <button id="btnComplete4" onclick="completeStep(4)" class="px-8 py-4 bg-primary text-on-primary font-headline-sm rounded-[18px] active-shadow inline-flex items-center gap-2">
+                        <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        <span>MARCAR PASO 4 COMPLETADO ✓</span>
+                    </button>
                 </div>
             </article>
 
             <!-- STEP 5 -->
-            <article class="nx-step-card" id="stepCard5">
-                <div class="nx-step-header">
-                    <span class="nx-step-tag">PASO 05 DE 08</span>
-                    <span style="font-size: 0.85rem; color: var(--nx-muted);">Validation Execution</span>
-                </div>
-                <h2 class="nx-step-title">Ejecutar Workflow de Validación Inicial</h2>
-                <p class="nx-step-desc">Ejecuta la operación atómica de verificación técnica en GitHub Actions.</p>
-
-                <div class="nx-flow">
-                    <span class="nx-flow-node">cleoleobel/mc-runner</span> <span class="nx-flow-arrow">→</span>
-                    <span class="nx-flow-node">Actions</span> <span class="nx-flow-arrow">→</span>
-                    <span class="nx-flow-node">NEXUS Java Server</span> <span class="nx-flow-arrow">→</span>
-                    <span class="nx-flow-node">Run workflow</span>
+            <article class="step-card space-y-6 hidden" id="stepCard5">
+                <div>
+                    <div class="inline-flex items-center gap-2 px-4 py-2 bg-secondary-fixed rounded-full mb-6">
+                        <span class="font-label-caps text-label-caps text-on-secondary-fixed tracking-widest uppercase">Misión 05 de 08</span>
+                    </div>
+                    <h1 class="font-display-lg-mobile text-display-lg-mobile md:font-display-lg md:text-display-lg text-on-surface mb-4">Ejecutar Workflow de Validación Inicial</h1>
+                    <p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">Ejecuta la verificación atómica de booteo de Forge, persistencia SHA-256 y detección de túneles.</p>
                 </div>
 
-                <div class="nx-ui-preview">
-                    <span class="nx-ui-preview-label">Así se ve el botón en GitHub Actions</span>
-                    <div class="nx-mock-btn">[ ▶ Run workflow ]</div>
+                <div class="bg-surface-container-lowest rounded-[24px] p-6 deep-soft-shadow space-y-4">
+                    <h4 class="font-headline-sm text-headline-sm text-on-surface">Ruta en GitHub Actions</h4>
+                    <div class="flex flex-wrap items-center gap-2 text-xs font-body-md text-on-surface bg-surface p-3 rounded-xl border border-surface-variant">
+                        <span class="bg-surface-variant px-2 py-1 rounded">cleoleobel/mc-runner</span>
+                        <span class="material-symbols-outlined text-[14px] text-outline">arrow_right_alt</span>
+                        <span class="bg-surface-variant px-2 py-1 rounded">Actions</span>
+                        <span class="material-symbols-outlined text-[14px] text-outline">arrow_right_alt</span>
+                        <span class="bg-surface-variant px-2 py-1 rounded">NEXUS Java Server</span>
+                        <span class="material-symbols-outlined text-[14px] text-outline">arrow_right_alt</span>
+                        <span class="bg-surface-variant px-2 py-1 rounded">Run workflow</span>
+                    </div>
+
+                    <div class="bg-secondary-fixed-dim/10 border border-secondary-container/30 rounded-xl p-4 flex flex-col items-center gap-3">
+                        <span class="font-label-caps text-label-caps text-secondary-container self-start">ASÍ SE VE EN GITHUB ACTIONS</span>
+                        <button class="bg-[#2da44e] text-white font-body-md text-sm px-4 py-2 rounded-md font-semibold shadow-sm flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[16px]">play_arrow</span> Run workflow
+                        </button>
+                    </div>
                 </div>
 
-                <div class="nx-checklist">
-                    <label class="nx-check-item">
-                        <input type="checkbox" onchange="checkSubItems(5)">
-                        <span>Use workflow from: <span class="nx-code-inline">Branch: main</span></span>
-                    </label>
-                    <label class="nx-check-item">
-                        <input type="checkbox" onchange="checkSubItems(5)">
-                        <span>Operación a ejecutar en el servidor: <span class="nx-code-inline">validate</span></span>
-                    </label>
-                    <label class="nx-check-item">
-                        <input type="checkbox" onchange="checkSubItems(5)">
-                        <span>Restaurar estado guardado del mundo: <span class="nx-code-inline">yes</span></span>
-                    </label>
+                <div class="bg-surface-container-lowest rounded-[24px] p-6 deep-soft-shadow space-y-4">
+                    <div class="flex flex-col gap-3">
+                        <label class="flex items-start gap-4 p-4 rounded-[20px] border border-surface-variant hover:bg-surface transition-colors cursor-pointer">
+                            <input type="checkbox" class="w-6 h-6 rounded-full border-2 border-outline text-primary focus:ring-primary mt-1" onchange="checkSubItems(5)">
+                            <div class="flex-1">
+                                <span class="font-headline-sm text-[16px] text-on-surface">Branch & Operation</span>
+                                <p class="text-xs text-on-surface-variant mt-1">Branch: <span class="font-mono bg-surface-variant px-1 rounded">main</span> | Operación: <span class="font-mono bg-surface-variant px-1 rounded">validate</span></p>
+                            </div>
+                        </label>
+                    </div>
                 </div>
 
-                <div class="nx-alert">
-                    <div class="nx-alert-title">🛑 NO CONTINÚES HASTA VER</div>
-                    <p>Una ejecución iniciada en la lista con icono amarillo de progreso 🟡.</p>
+                <div class="p-6 bg-error-container/30 border border-error/30 rounded-[24px]">
+                    <div class="flex items-center gap-2 text-error font-bold mb-2">
+                        <span class="material-symbols-outlined">stop_circle</span>
+                        <span>NO CONTINÚES HASTA VER:</span>
+                    </div>
+                    <p class="text-sm text-on-surface-variant">Una ejecución iniciada en la lista con icono amarillo de progreso 🟡.</p>
                 </div>
 
-                <div class="nx-step-actions">
-                    <button class="nx-btn nx-btn-secondary" onclick="switchStep(4)">← Anterior</button>
-                    <button class="nx-btn nx-btn-primary" id="btnComplete5" onclick="completeStep(5)">Marcar Paso 5 Completado ✓</button>
+                <div class="p-6 bg-surface-variant/30 rounded-[24px] border border-outline-variant/30 text-center flex justify-between gap-4">
+                    <button onclick="switchStep(4)" class="px-6 py-4 bg-surface-container text-on-surface font-headline-sm rounded-[18px]">← Anterior</button>
+                    <button id="btnComplete5" onclick="completeStep(5)" class="px-8 py-4 bg-primary text-on-primary font-headline-sm rounded-[18px] active-shadow inline-flex items-center gap-2">
+                        <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        <span>MARCAR PASO 5 COMPLETADO ✓</span>
+                    </button>
                 </div>
             </article>
 
             <!-- STEP 6 -->
-            <article class="nx-step-card" id="stepCard6">
-                <div class="nx-step-header">
-                    <span class="nx-step-tag">PASO 06 DE 08</span>
-                    <span style="font-size: 0.85rem; color: var(--nx-muted);">Evidencia & Step Summary</span>
-                </div>
-                <h2 class="nx-step-title">Verificación de Evidencia y Summary</h2>
-                <p class="nx-step-desc">Inspecciona el reporte emitido por el runner al finalizar el job de validación.</p>
-
-                <div class="nx-flow">
-                    <span class="nx-flow-node">Workflow Run</span> <span class="nx-flow-arrow">→</span>
-                    <span class="nx-flow-node">Despliegue NEXUS Dedicated Server</span> <span class="nx-flow-arrow">→</span>
-                    <span class="nx-flow-node">Step Summary</span>
+            <article class="step-card space-y-6 hidden" id="stepCard6">
+                <div>
+                    <div class="inline-flex items-center gap-2 px-4 py-2 bg-secondary-fixed rounded-full mb-6">
+                        <span class="font-label-caps text-label-caps text-on-secondary-fixed tracking-widest uppercase">Misión 06 de 08</span>
+                    </div>
+                    <h1 class="font-display-lg-mobile text-display-lg-mobile md:font-display-lg md:text-display-lg text-on-surface mb-4">Verificación de Evidencia Granular</h1>
+                    <p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">Inspecciona la tabla enviada por el runner al Step Summary de la ejecución.</p>
                 </div>
 
-                <table class="nx-table">
-                    <thead>
-                        <tr>
-                            <th>MÉTRICA / COMPONENTE</th>
-                            <th>ESTADO REQUERIDO</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>FORGE_BOOT</td><td><span style="color: var(--nx-primary); font-weight: bold;">✅ ONLINE</span></td></tr>
-                        <tr><td>CLEAN_STOP</td><td><span style="color: var(--nx-primary); font-weight: bold;">PASS</span></td></tr>
-                        <tr><td>BACKUP</td><td><span style="color: var(--nx-primary); font-weight: bold;">PASS</span></td></tr>
-                        <tr><td>REMOTE_SHA</td><td><span style="color: var(--nx-primary); font-weight: bold;">PASS</span></td></tr>
-                        <tr><td>RESTORE_SHA</td><td><span style="color: var(--nx-primary); font-weight: bold;">PASS</span></td></tr>
-                        <tr><td>PLAYIT_SECRET</td><td><span style="color: var(--nx-primary); font-weight: bold;">PASS</span></td></tr>
-                        <tr><td>PLAYIT_AGENT</td><td><span style="color: var(--nx-primary); font-weight: bold;">PASS</span></td></tr>
-                        <tr><td>MINECRAFT_TUNNEL</td><td><span style="color: var(--nx-primary); font-weight: bold;">PASS</span></td></tr>
-                        <tr><td>VOICE_TUNNEL</td><td><span style="color: var(--nx-primary); font-weight: bold;">PASS</span></td></tr>
-                        <tr><td>SVC_CONFIG</td><td><span style="color: var(--nx-primary); font-weight: bold;">PASS</span></td></tr>
-                    </tbody>
-                </table>
-
-                <div class="nx-checklist">
-                    <label class="nx-check-item">
-                        <input type="checkbox" onchange="checkSubItems(6)">
-                        <span>Check verde ✅ en la ejecución completada</span>
-                    </label>
-                    <label class="nx-check-item">
-                        <input type="checkbox" onchange="checkSubItems(6)">
-                        <span>Todas las métricas de Step Summary están en <span class="nx-code-inline">PASS</span></span>
-                    </label>
+                <div class="bg-surface-container-lowest rounded-[24px] p-6 deep-soft-shadow">
+                    <table class="w-full text-xs text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-outline-variant/30 text-on-surface-variant">
+                                <th class="p-3">MÉTRICA / COMPONENTE</th>
+                                <th class="p-3">ESTADO REQUERIDO</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-outline-variant/20 font-mono">
+                            <tr><td class="p-3">FORGE_BOOT</td><td class="p-3 text-primary font-bold">✅ ONLINE</td></tr>
+                            <tr><td class="p-3">CLEAN_STOP</td><td class="p-3 text-primary font-bold">PASS</td></tr>
+                            <tr><td class="p-3">BACKUP</td><td class="p-3 text-primary font-bold">PASS</td></tr>
+                            <tr><td class="p-3">REMOTE_SHA</td><td class="p-3 text-primary font-bold">PASS</td></tr>
+                            <tr><td class="p-3">RESTORE_SHA</td><td class="p-3 text-primary font-bold">PASS</td></tr>
+                            <tr><td class="p-3">PLAYIT_SECRET</td><td class="p-3 text-primary font-bold">PASS</td></tr>
+                            <tr><td class="p-3">PLAYIT_AGENT</td><td class="p-3 text-primary font-bold">PASS</td></tr>
+                            <tr><td class="p-3">MINECRAFT_TUNNEL</td><td class="p-3 text-primary font-bold">PASS</td></tr>
+                            <tr><td class="p-3">VOICE_TUNNEL</td><td class="p-3 text-primary font-bold">PASS</td></tr>
+                            <tr><td class="p-3">SVC_CONFIG</td><td class="p-3 text-primary font-bold">PASS</td></tr>
+                        </tbody>
+                    </table>
                 </div>
 
-                <div class="nx-step-actions">
-                    <button class="nx-btn nx-btn-secondary" onclick="switchStep(5)">← Anterior</button>
-                    <button class="nx-btn nx-btn-primary" id="btnComplete6" onclick="completeStep(6)">Marcar Paso 6 Completado ✓</button>
+                <div class="bg-surface-container-lowest rounded-[24px] p-6 deep-soft-shadow space-y-4">
+                    <div class="flex flex-col gap-3">
+                        <label class="flex items-start gap-4 p-4 rounded-[20px] border border-surface-variant hover:bg-surface transition-colors cursor-pointer">
+                            <input type="checkbox" class="w-6 h-6 rounded-full border-2 border-outline text-primary focus:ring-primary mt-1" onchange="checkSubItems(6)">
+                            <div class="flex-1">
+                                <span class="font-headline-sm text-[16px] text-on-surface">Check Verde ✅</span>
+                                <p class="text-xs text-on-surface-variant mt-1">El job finalizó limpiamente y todas las métricas están en PASS / ONLINE.</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="p-6 bg-surface-variant/30 rounded-[24px] border border-outline-variant/30 text-center flex justify-between gap-4">
+                    <button onclick="switchStep(5)" class="px-6 py-4 bg-surface-container text-on-surface font-headline-sm rounded-[18px]">← Anterior</button>
+                    <button id="btnComplete6" onclick="completeStep(6)" class="px-8 py-4 bg-primary text-on-primary font-headline-sm rounded-[18px] active-shadow inline-flex items-center gap-2">
+                        <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        <span>MARCAR PASO 6 COMPLETADO ✓</span>
+                    </button>
                 </div>
             </article>
 
             <!-- STEP 7 -->
-            <article class="nx-step-card" id="stepCard7">
-                <div class="nx-step-header">
-                    <span class="nx-step-tag">PASO 07 DE 08</span>
-                    <span style="font-size: 0.85rem; color: var(--nx-muted);">Production Server</span>
-                </div>
-                <h2 class="nx-step-title">Iniciar Servidor en Producción</h2>
-                <p class="nx-step-desc">Inicia la sesión activa de juego en modo dedicado.</p>
-
-                <div class="nx-flow">
-                    <span class="nx-flow-node">Actions</span> <span class="nx-flow-arrow">→</span>
-                    <span class="nx-flow-node">NEXUS Java Server</span> <span class="nx-flow-arrow">→</span>
-                    <span class="nx-flow-node">Run workflow</span>
+            <article class="step-card space-y-6 hidden" id="stepCard7">
+                <div>
+                    <div class="inline-flex items-center gap-2 px-4 py-2 bg-secondary-fixed rounded-full mb-6">
+                        <span class="font-label-caps text-label-caps text-on-secondary-fixed tracking-widest uppercase">Misión 07 de 08</span>
+                    </div>
+                    <h1 class="font-display-lg-mobile text-display-lg-mobile md:font-display-lg md:text-display-lg text-on-surface mb-4">Iniciar Servidor en Producción</h1>
+                    <p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">Enciende el servidor dedicado de Minecraft para permitir el ingreso de jugadores.</p>
                 </div>
 
-                <div class="nx-checklist">
-                    <label class="nx-check-item">
-                        <input type="checkbox" onchange="checkSubItems(7)">
-                        <span>Branch: <span class="nx-code-inline">main</span></span>
-                    </label>
-                    <label class="nx-check-item">
-                        <input type="checkbox" onchange="checkSubItems(7)">
-                        <span>Operación a ejecutar en el servidor: <span class="nx-code-inline">run-server</span></span>
-                    </label>
-                    <label class="nx-check-item">
-                        <input type="checkbox" onchange="checkSubItems(7)">
-                        <span>Restaurar estado guardado del mundo: <span class="nx-code-inline">yes</span></span>
-                    </label>
+                <div class="bg-surface-container-lowest rounded-[24px] p-6 deep-soft-shadow space-y-4">
+                    <div class="flex flex-col gap-3">
+                        <label class="flex items-start gap-4 p-4 rounded-[20px] border border-surface-variant hover:bg-surface transition-colors cursor-pointer">
+                            <input type="checkbox" class="w-6 h-6 rounded-full border-2 border-outline text-primary focus:ring-primary mt-1" onchange="checkSubItems(7)">
+                            <div class="flex-1">
+                                <span class="font-headline-sm text-[16px] text-on-surface">Operación run-server</span>
+                                <p class="text-xs text-on-surface-variant mt-1">Actions → <span class="font-mono bg-surface-variant px-1 rounded">NEXUS Java Server</span> → <span class="font-mono bg-surface-variant px-1 rounded">Run workflow</span> → Operación: <span class="font-mono bg-surface-variant px-1 rounded">run-server</span>.</p>
+                            </div>
+                        </label>
+                    </div>
                 </div>
 
-                <div class="nx-alert">
-                    <div class="nx-alert-title">🛑 NO CONTINÚES HASTA VER</div>
-                    <p>El servidor iniciado y mostrando <span class="nx-code-inline">FORGE_BOOT = ✅ ONLINE</span>.</p>
+                <div class="p-6 bg-error-container/30 border border-error/30 rounded-[24px]">
+                    <div class="flex items-center gap-2 text-error font-bold mb-2">
+                        <span class="material-symbols-outlined">stop_circle</span>
+                        <span>NO CONTINÚES HASTA VER:</span>
+                    </div>
+                    <p class="text-sm text-on-surface-variant">El servidor en ejecución y mostrando <span class="font-mono bg-surface-variant px-1 rounded text-on-surface">FORGE_BOOT = ✅ ONLINE</span> en la interfaz de GitHub.</p>
                 </div>
 
-                <div class="nx-step-actions">
-                    <button class="nx-btn nx-btn-secondary" onclick="switchStep(6)">← Anterior</button>
-                    <button class="nx-btn nx-btn-primary" id="btnComplete7" onclick="completeStep(7)">Marcar Paso 7 Completado ✓</button>
+                <div class="p-6 bg-surface-variant/30 rounded-[24px] border border-outline-variant/30 text-center flex justify-between gap-4">
+                    <button onclick="switchStep(6)" class="px-6 py-4 bg-surface-container text-on-surface font-headline-sm rounded-[18px]">← Anterior</button>
+                    <button id="btnComplete7" onclick="completeStep(7)" class="px-8 py-4 bg-primary text-on-primary font-headline-sm rounded-[18px] active-shadow inline-flex items-center gap-2">
+                        <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        <span>MARCAR PASO 7 COMPLETADO ✓</span>
+                    </button>
                 </div>
             </article>
 
             <!-- STEP 8 -->
-            <article class="nx-step-card" id="stepCard8">
-                <div class="nx-step-header">
-                    <span class="nx-step-tag">PASO 08 DE 08</span>
-                    <span style="font-size: 0.85rem; color: var(--nx-muted);">Minecraft & Voice Chat</span>
-                </div>
-                <h2 class="nx-step-title">Conexión al Juego y Chat de Voz</h2>
-                <p class="nx-step-desc">Conéctate al servidor desde Minecraft Java 1.20.1 y confirma Simple Voice Chat.</p>
-
-                <div class="nx-flow">
-                    <span class="nx-flow-node">Playit Dashboard (Copiar Host TCP)</span> <span class="nx-flow-arrow">→</span>
-                    <span class="nx-flow-node">Minecraft</span> <span class="nx-flow-arrow">→</span>
-                    <span class="nx-flow-node">Multiplayer</span> <span class="nx-flow-arrow">→</span>
-                    <span class="nx-flow-node">Add Server</span>
+            <article class="step-card space-y-6 hidden" id="stepCard8">
+                <div>
+                    <div class="inline-flex items-center gap-2 px-4 py-2 bg-secondary-fixed rounded-full mb-6">
+                        <span class="font-label-caps text-label-caps text-on-secondary-fixed tracking-widest uppercase">Misión 08 de 08</span>
+                    </div>
+                    <h1 class="font-display-lg-mobile text-display-lg-mobile md:font-display-lg md:text-display-lg text-on-surface mb-4">Conexión al Juego y Chat de Voz</h1>
+                    <p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">Conéctate al servidor desde Minecraft Java 1.20.1 y confirma Simple Voice Chat de proximidad.</p>
                 </div>
 
-                <div class="nx-checklist">
-                    <label class="nx-check-item">
-                        <input type="checkbox" onchange="checkSubItems(8)">
-                        <span>Server Address: Pega la IP de Playit (ej. <span class="nx-code-inline">nexus.playit.gg:25565</span>)</span>
-                    </label>
-                    <label class="nx-check-item">
-                        <input type="checkbox" onchange="checkSubItems(8)">
-                        <span>Entra al mundo y presiona la tecla <span class="nx-code-inline">V</span></span>
-                    </label>
+                <div class="bg-surface-container-lowest rounded-[24px] p-6 deep-soft-shadow space-y-4">
+                    <div class="flex flex-col gap-3">
+                        <label class="flex items-start gap-4 p-4 rounded-[20px] border border-surface-variant hover:bg-surface transition-colors cursor-pointer">
+                            <input type="checkbox" class="w-6 h-6 rounded-full border-2 border-outline text-primary focus:ring-primary mt-1" onchange="checkSubItems(8)">
+                            <div class="flex-1">
+                                <span class="font-headline-sm text-[16px] text-on-surface">Agregar Servidor en Minecraft</span>
+                                <p class="text-xs text-on-surface-variant mt-1">Multiplayer → Add Server → Pega el Host de Playit (ej. <span class="font-mono bg-surface-variant px-1 rounded">nexus.playit.gg:25565</span>) → Join Server.</p>
+                            </div>
+                        </label>
+                        <label class="flex items-start gap-4 p-4 rounded-[20px] border border-surface-variant hover:bg-surface transition-colors cursor-pointer">
+                            <input type="checkbox" class="w-6 h-6 rounded-full border-2 border-outline text-primary focus:ring-primary mt-1" onchange="checkSubItems(8)">
+                            <div class="flex-1">
+                                <span class="font-headline-sm text-[16px] text-on-surface">Presionar Tecla V</span>
+                                <p class="text-xs text-on-surface-variant mt-1">Una vez dentro del mundo, presiona la tecla <span class="font-mono bg-surface-variant px-1 rounded">V</span> para validar la vinculación de voz.</p>
+                            </div>
+                        </label>
+                    </div>
                 </div>
 
-                <div class="nx-alert">
-                    <div class="nx-alert-title">🛑 NO CONTINÚES HASTA VER</div>
-                    <p>Tu personaje en el juego y el menú de Simple Voice Chat abierto mostrando el micrófono activo (vinculado automáticamente por el runner).</p>
+                <div class="p-6 bg-error-container/30 border border-error/30 rounded-[24px]">
+                    <div class="flex items-center gap-2 text-error font-bold mb-2">
+                        <span class="material-symbols-outlined">stop_circle</span>
+                        <span>NO CONTINÚES HASTA VER:</span>
+                    </div>
+                    <p class="text-sm text-on-surface-variant">El menú de Simple Voice Chat abierto en pantalla mostrando el icono de micrófono activo (la dirección <span class="font-mono bg-surface-variant px-1 rounded">voice_host</span> fue vinculada automáticamente por el runner).</p>
                 </div>
 
-                <div class="nx-step-actions">
-                    <button class="nx-btn nx-btn-secondary" onclick="switchStep(7)">← Anterior</button>
-                    <button class="nx-btn nx-btn-primary" id="btnComplete8" onclick="completeStep(8)">Finalizar Secuencia de Lanzamiento 🎉</button>
+                <div class="p-6 bg-surface-variant/30 rounded-[24px] border border-outline-variant/30 text-center flex justify-between gap-4">
+                    <button onclick="switchStep(7)" class="px-6 py-4 bg-surface-container text-on-surface font-headline-sm rounded-[18px]">← Anterior</button>
+                    <button id="btnComplete8" onclick="completeStep(8)" class="px-8 py-4 bg-primary text-on-primary font-headline-sm rounded-[18px] active-shadow inline-flex items-center gap-2">
+                        <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        <span>FINALIZAR SECUENCIA DE LANZAMIENTO 🎉</span>
+                    </button>
                 </div>
             </article>
 
-            <!-- FINAL CELEBRATION SCREEN -->
-            <div class="nx-celebration" id="celebrationScreen">
-                <div class="nx-badge-hero">✓</div>
-                <h2 style="font-size: 2.2rem; margin-bottom: 12px; color: var(--nx-text);">NEXUS IS READY</h2>
-                <p style="color: var(--nx-muted); font-size: 1.1rem; max-width: 500px; margin: 0 auto 32px auto;">
-                    Has completado exitosamente la secuencia de configuración. Tu infraestructura NEXUS está 100% lista y funcional.
-                </p>
-
-                <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-                    <a href="https://github.com/cleoleobel/mc-runner/actions" target="_blank" rel="noopener noreferrer" class="nx-btn nx-btn-primary" style="text-decoration: none;">
-                        Abrir GitHub Actions ↗
-                    </a>
-                    <button class="nx-btn nx-btn-secondary" onclick="switchStep(1)">Revisar Guía</button>
+            <!-- FINAL CELEBRATION CANVAS -->
+            <div class="hidden space-y-8 text-center py-12" id="celebrationScreen">
+                <div class="relative flex items-center justify-center w-64 h-64 mx-auto">
+                    <div class="absolute inset-0 bg-primary/20 rounded-full animate-ping" style="animation-duration: 3s;"></div>
+                    <div class="absolute inset-8 bg-secondary-container/20 rounded-full animate-pulse" style="animation-duration: 2s;"></div>
+                    <div class="absolute inset-0 w-full h-full pointer-events-none">
+                        <div class="spark bg-primary-fixed shadow-[0_0_10px_2px_rgba(100,253,185,0.8)]" style="animation-duration: 5s;"></div>
+                        <div class="spark bg-secondary-container shadow-[0_0_10px_2px_rgba(43,184,255,0.8)]" style="animation-duration: 6s; animation-delay: -2s;"></div>
+                    </div>
+                    <div class="absolute inset-16 bg-gradient-to-br from-primary to-[#008c5e] rounded-full shadow-[0_10px_40px_rgba(0,108,72,0.6)] border border-primary-fixed/50 flex items-center justify-center z-10">
+                        <span class="material-symbols-outlined text-on-primary text-6xl" style="font-variation-settings: 'FILL' 1;">done_all</span>
+                    </div>
                 </div>
 
-                <button class="nx-reset-btn" onclick="openResetModal()" style="margin-top: 32px;">Reiniciar Progreso Guardado</button>
+                <div>
+                    <h2 class="font-label-caps text-label-caps text-primary tracking-[0.15em] mb-3 uppercase">100% LAUNCH SEQUENCE COMPLETE</h2>
+                    <h1 class="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface">NEXUS IS READY</h1>
+                    <p class="font-body-lg text-body-lg text-on-surface-variant mt-2 max-w-lg mx-auto">Tu infraestructura está online, autenticada y completamente operacional.</p>
+                </div>
+
+                <div class="bg-surface-container-lowest rounded-[24px] p-6 deep-soft-shadow max-w-xl mx-auto text-left space-y-3 font-mono text-xs">
+                    <div class="flex justify-between"><span>FORGE_BOOT</span><span class="text-primary font-bold">ONLINE</span></div>
+                    <div class="flex justify-between"><span>PLAYIT_AGENT</span><span class="text-primary font-bold">ONLINE</span></div>
+                    <div class="flex justify-between"><span>SECRETS_SYNC</span><span class="text-primary font-bold">VERIFIED</span></div>
+                    <div class="flex justify-between"><span>NETWORK_TUNNEL</span><span class="text-primary font-bold">ACTIVE</span></div>
+                    <div class="flex justify-between"><span>SVC_AUTOMATION</span><span class="text-primary font-bold">CONFIGURED</span></div>
+                </div>
+
+                <div class="flex flex-wrap gap-4 justify-center">
+                    <a href="https://github.com/cleoleobel/mc-runner/actions" target="_blank" rel="noopener noreferrer" class="px-8 py-4 bg-primary text-on-primary font-headline-sm rounded-[18px] active-shadow inline-flex items-center gap-2 hover:brightness-110 transition-all">
+                        <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+                        <span>ABRIR GITHUB ACTIONS ↗</span>
+                    </a>
+                    <button onclick="switchStep(1)" class="px-6 py-4 bg-surface-container text-on-surface font-headline-sm rounded-[18px]">
+                        Revisar Guía
+                    </button>
+                </div>
+
+                <button onclick="openResetModal()" class="text-xs text-on-surface-variant hover:text-error transition-colors mt-6">
+                    Reiniciar Progreso Guardado
+                </button>
             </div>
 
-        </main>
+        </section>
     </div>
-</div>
+</main>
+
+<!-- Bottom Nav Bar (Mobile Floating CTA) -->
+<nav class="lg:hidden bg-surface-container-lowest/90 backdrop-blur-lg border-t border-outline-variant/30 fixed bottom-0 left-0 w-full z-50 p-4 flex justify-center items-center">
+    <button id="mobileNavBtn" onclick="triggerMobileCurrentStep()" class="w-full max-w-sm py-3 px-6 bg-primary text-on-primary font-headline-sm text-sm rounded-xl active-shadow flex items-center justify-center gap-2">
+        <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+        <span>COMPLETAR PASO ACTUAL</span>
+    </button>
+</nav>
 
 <!-- Modal Reset -->
-<div class="nx-modal-overlay" id="resetModal">
-    <div class="nx-modal">
-        <h3 style="font-size: 1.3rem; margin-bottom: 12px;">¿Reiniciar Progreso?</h3>
-        <p style="color: var(--nx-muted); font-size: 0.9rem; margin-bottom: 24px;">Esto restablecerá el estado visual de la guía a 0%. No alterará tus secretos ni repositorios en GitHub.</p>
-        <div style="display: flex; gap: 12px; justify-content: center;">
-            <button class="nx-btn nx-btn-secondary" onclick="closeResetModal()">Cancelar</button>
-            <button class="nx-btn nx-btn-primary" style="background: var(--nx-danger);" onclick="confirmReset()">Sí, Reiniciar</button>
+<div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] hidden items-center justify-center p-4" id="resetModal">
+    <div class="bg-surface-container-lowest rounded-[24px] p-8 max-w-sm w-full text-center space-y-4 deep-soft-shadow">
+        <h3 class="font-headline-sm text-on-surface">¿Reiniciar Progreso?</h3>
+        <p class="text-xs text-on-surface-variant">Esto restablecerá el indicador visual a 0%. No alterará tus datos ni secretos en GitHub.</p>
+        <div class="flex gap-3 justify-center">
+            <button onclick="closeResetModal()" class="px-5 py-2.5 bg-surface-container text-on-surface font-body-md text-sm rounded-xl">Cancelar</button>
+            <button onclick="confirmReset()" class="px-5 py-2.5 bg-error text-on-error font-body-md text-sm rounded-xl">Sí, Reiniciar</button>
         </div>
     </div>
 </div>
 
 <script>
-    // STATE & LOCALSTORAGE
     const TOTAL_STEPS = 8;
     let currentStep = 1;
     let completedSteps = new Set();
@@ -1220,7 +835,7 @@
         currentStep = stepNum;
         saveState();
         updateUI();
-        window.scrollTo({ top: 120, behavior: 'smooth' });
+        window.scrollTo({ top: 100, behavior: 'smooth' });
     }
 
     function checkSubItems(stepNum) {
@@ -1235,7 +850,6 @@
             if (!cb.checked) allChecked = false;
         });
 
-        // Habilitar o deshabilitar botón principal
         btn.disabled = !allChecked;
     }
 
@@ -1244,69 +858,73 @@
         if (stepNum < TOTAL_STEPS) {
             currentStep = stepNum + 1;
         } else {
-            currentStep = TOTAL_STEPS + 1; // Final celebration
+            currentStep = TOTAL_STEPS + 1;
         }
         saveState();
         updateUI();
-        window.scrollTo({ top: 120, behavior: 'smooth' });
+        window.scrollTo({ top: 100, behavior: 'smooth' });
+    }
+
+    function triggerMobileCurrentStep() {
+        if (currentStep <= TOTAL_STEPS) {
+            completeStep(currentStep);
+        }
     }
 
     function updateUI() {
-        // Update Sidebar items
-        const pathItems = document.querySelectorAll('.nx-path-item');
-        pathItems.forEach((item, idx) => {
-            const stepNum = idx + 1;
-            item.classList.remove('active', 'completed');
+        // Sidebar Nodes
+        for (let i = 1; i <= TOTAL_STEPS; i++) {
+            const node = document.getElementById(`nodeItem${i}`);
+            if (!node) continue;
+            const badge = node.querySelector('.node-badge');
+            const text = node.querySelector('span:not(.material-symbols-outlined)');
 
-            if (completedSteps.has(stepNum)) {
-                item.classList.add('completed');
-                item.querySelector('.nx-path-node').innerHTML = '✓';
+            node.classList.remove('active', 'completed');
+            badge.className = 'w-10 h-10 rounded-full flex items-center justify-center shrink-0 node-badge ';
+
+            if (completedSteps.has(i)) {
+                node.classList.add('completed');
+                badge.className += 'bg-primary text-on-primary';
+                badge.innerHTML = '<span class="material-symbols-outlined text-base">check</span>';
+            } else if (i === currentStep) {
+                node.classList.add('active');
+                badge.className += 'bg-surface border-2 border-secondary-container text-secondary-container active-shadow';
+                badge.innerHTML = `<span class="font-label-caps text-label-caps">${i}</span>`;
             } else {
-                item.querySelector('.nx-path-node').innerHTML = stepNum;
+                badge.className += 'bg-surface-container border-2 border-outline-variant text-outline';
+                badge.innerHTML = `<span class="font-label-caps text-label-caps">${i}</span>`;
             }
+        }
 
-            if (stepNum === currentStep) {
-                item.classList.add('active');
-            }
-        });
-
-        // Hide all cards
+        // Hide all Step Cards
         for (let i = 1; i <= TOTAL_STEPS; i++) {
             const card = document.getElementById(`stepCard${i}`);
-            if (card) card.classList.remove('active');
+            if (card) card.classList.add('hidden');
         }
 
         const celebration = document.getElementById('celebrationScreen');
-        celebration.classList.remove('active');
+        celebration.classList.add('hidden');
 
         if (currentStep <= TOTAL_STEPS) {
             const activeCard = document.getElementById(`stepCard${currentStep}`);
-            if (activeCard) activeCard.classList.add('active');
+            if (activeCard) activeCard.classList.remove('hidden');
             checkSubItems(currentStep);
         } else {
-            // Show celebration screen
-            celebration.classList.add('active');
+            celebration.classList.remove('hidden');
         }
 
-        // Progress calculation
+        // Header Progress
         const percent = Math.round((completedSteps.size / TOTAL_STEPS) * 100);
-        document.getElementById('progressBarFill').style.width = `${percent}%`;
-        document.getElementById('progressText').innerText = `${completedSteps.size} / ${TOTAL_STEPS} pasos (${percent}%)`;
+        document.getElementById('headerProgressFill').style.width = `${percent}%`;
+        document.getElementById('headerProgressText').innerText = `${completedSteps.size} DE ${TOTAL_STEPS} (${percent}%)`;
     }
 
-    function copyText(text, btnElement) {
+    function copyToClipboard(text, btnElement) {
         navigator.clipboard.writeText(text).then(() => {
-            const originalText = btnElement.innerText;
-            btnElement.innerText = '¡Copiado! ✓';
-            btnElement.style.background = 'var(--nx-primary)';
-            btnElement.style.borderColor = 'var(--nx-primary)';
-            btnElement.style.color = '#ffffff';
-
+            const originalHTML = btnElement.innerHTML;
+            btnElement.innerHTML = '<span class="material-symbols-outlined text-primary text-sm">check</span>';
             setTimeout(() => {
-                btnElement.innerText = originalText;
-                btnElement.style.background = '';
-                btnElement.style.borderColor = '';
-                btnElement.style.color = '';
+                btnElement.innerHTML = originalHTML;
             }, 1500);
         });
     }
@@ -1329,7 +947,6 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    // Initialize on load
     document.addEventListener('DOMContentLoaded', init);
 </script>
 
