@@ -89,7 +89,7 @@ jobs:
       - name: ETAPA 3 - Instalar Java 17 JDK
         uses: actions/setup-java@v5
         with:
-          distribution: 'graalvm'
+          distribution: 'temurin'
           java-version: '17'
 
       - name: ETAPA 4 - Descargar Server Bundle desde NEXUS STORAGE
