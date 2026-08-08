@@ -101,15 +101,15 @@ fi
 # 3. Arrancar agente con sanitización de secrets
 echo "[PLAYIT] Iniciando daemon de Playit..."
 
-("$PLAYIT_BIN" --secret "$PLAYIT_SECRET" daemon 2>&1 | sed -u "s/$PLAYIT_SECRET/[REDACTED]/g" > "$PLAYIT_LOG") &
+("$PLAYIT_BIN" --secret "$PLAYIT_SECRET" 2>&1 | sed -u "s/$PLAYIT_SECRET/[REDACTED]/g" > "$PLAYIT_LOG") &
 PLAYIT_PID=$!
 echo "$PLAYIT_PID" > "$LOG_DIR/playit.pid"
 
 echo "[PLAYIT] Agente lanzado en segundo plano (PID: $PLAYIT_PID)."
 
 # 4. Esperar autenticación y verificación de conexión inicial
-echo "[PLAYIT] Esperando autenticación y establecimiento de túneles (8s)..."
-sleep 8
+echo "[PLAYIT] Esperando autenticación y establecimiento de túneles (15s)..."
+sleep 15
 
 if ! kill -0 "$PLAYIT_PID" 2>/dev/null; then
     echo "[PLAYIT ERROR] El agente Playit se detuvo prematuramente."
