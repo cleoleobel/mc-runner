@@ -62,9 +62,12 @@ rm -f "$FIFO_PATH"
 mkfifo "$FIFO_PATH"
 exec 3<> "$FIFO_PATH"
 
-# 4.5. Configurar modo No Premium (online-mode=false)
+# 4.5. Configurar modo No Premium y Optimización de Rendimiento Extrema
 if [ -f "server.properties" ]; then
     sed -i 's/^online-mode=true/online-mode=false/' server.properties
+    sed -i 's/^view-distance=.*/view-distance=7/' server.properties
+    sed -i 's/^simulation-distance=.*/simulation-distance=5/' server.properties
+    sed -i 's/^entity-broadcast-range-percentage=.*/entity-broadcast-range-percentage=50/' server.properties
 fi
 
 # 5. Arrancar Forge Dedicated Server
