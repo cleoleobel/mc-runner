@@ -13,9 +13,9 @@ on:
           - "pregen"
           - "validate"
       session_minutes:
-        description: "Duración máxima de la sesión en minutos (máx 330)"
+        description: "Duración máxima de la sesión en minutos (máx 350)"
         required: false
-        default: "330"
+        default: "345"
       restore_world:
         description: "Restaurar estado guardado del mundo desde NEXUS STORAGE"
         required: false
@@ -29,6 +29,8 @@ on:
         required: false
         default: false
         type: boolean
+  schedule:
+    - cron: '0 */6 * * *'
 
 concurrency:
   group: nexus-java-server
