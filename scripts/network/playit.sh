@@ -108,8 +108,16 @@ echo "$PLAYIT_PID" > "$LOG_DIR/playit.pid"
 echo "[PLAYIT] Agente lanzado en segundo plano (PID: $PLAYIT_PID)."
 
 # 4. Esperar autenticación y verificación de conexión inicial
-echo "[PLAYIT] Esperando autenticación y establecimiento de túneles (15s)..."
-sleep 15
+echo "[PLAYIT] Esperando autenticación y establecimiento de túneles (hasta 60s)..."
+ELAPSED=0
+while [ $ELAPSED -lt 60 ]; do
+    if grep -iE "tunnel runner.*established.*24454" "$PLAYIT_LOG" >/dev/null 2>&1; then
+        echo "[PLAYIT] Túneles establecidos detectados en el log."
+        break
+    fi
+    sleep 3
+    ELAPSED=$((ELAPSED+3))
+done
 
 if ! kill -0 "$PLAYIT_PID" 2>/dev/null; then
     echo "[PLAYIT ERROR] El agente Playit se detuvo prematuramente."
