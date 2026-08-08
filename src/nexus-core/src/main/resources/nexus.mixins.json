@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.nexus.core.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "nexus.refmap.json",
+  "mixins": [
+    "ArmorStandMixin"
+  ],
+  "client": [],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

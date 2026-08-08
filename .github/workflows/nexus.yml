@@ -108,6 +108,13 @@ jobs:
           tar -xzf download_bundle/server-bundle.tar.gz -C ./
           rm -rf download_bundle
 
+      - name: ETAPA 6.5 - Compilar e Inyectar Mod Anti-Crash (nexus-core)
+        run: |
+          cd src/nexus-core
+          chmod +x gradlew
+          ./gradlew build
+          cp build/libs/nexus-core-1.0.0.jar ../../mods/nexus-core-1.0.0.jar
+
       - name: ETAPA 7 - Restaurar Estado Persistente del Mundo
         run: |
           bash scripts/nexus/restore-world.sh
