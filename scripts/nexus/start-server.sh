@@ -83,11 +83,11 @@ if [ -f "server.properties" ]; then
     sed -i 's/^network-compression-threshold=.*/network-compression-threshold=512/' server.properties
 fi
 
-# 4.6. Inyección Dinámica de Optimización Extrema (Radium, FerriteCore, ModernFix)
+# 4.6. Inyección Dinámica de Optimización Extrema (FerriteCore, ModernFix)
 if [ -d "mods" ]; then
-    if [ ! -f "mods/radium.jar" ]; then
-        echo "[OPTIMIZER] Inyectando Radium Reforged..."
-        curl -sL "https://cdn.modrinth.com/data/2gvRmQXx/versions/n947JjJH/radium-mc1.20.1-0.12.4%2Bgit.26c9d8e.jar" -o mods/radium.jar
+    if [ -f "mods/radium.jar" ]; then
+        echo "[OPTIMIZER] Removiendo Radium Reforged (incompatible con entidades de Cataclysm/Citadel)..."
+        rm -f mods/radium.jar
     fi
     if [ ! -f "mods/ferritecore-6.0.1-forge.jar" ]; then
         echo "[OPTIMIZER] Inyectando FerriteCore..."
