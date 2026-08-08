@@ -1,169 +1,207 @@
 #!/usr/bin/env bash
-# ==============================================================================
-# NEXUS NETWORK AGENT - PLAYIT.GG INTEGRATION & ABSTRACTION
-# Configura y arranca la capa de red pública Playit.gg
-# ==============================================================================
+# NEXUS network layer: verified Playit agent + Simple Voice Chat endpoint wiring.
 
 set -euo pipefail
 
-LOG_DIR="logs"
-mkdir -p "$LOG_DIR"
-PLAYIT_LOG="$LOG_DIR/playit.log"
-BINARY_DIR="tools/bin"
-mkdir -p "$BINARY_DIR"
-#!/usr/bin/env bash
-# ==============================================================================
-# NEXUS NETWORK AGENT - PLAYIT.GG INTEGRATION & ABSTRACTION
-# Configura y arranca la capa de red pública Playit.gg
-# ==============================================================================
+readonly PLAYIT_VERSION="0.17.1"
+readonly LOG_DIR="logs"
+readonly DIAG_DIR="session_diagnostics"
+readonly BINARY_DIR="tools/bin"
+readonly PLAYIT_BIN="$BINARY_DIR/playit"
+readonly PLAYIT_LOG="$LOG_DIR/playit.log"
+readonly VOICE_CONFIG="config/voicechat/voicechat-server.properties"
 
-set -euo pipefail
+mkdir -p "$LOG_DIR" "$DIAG_DIR" "$BINARY_DIR" "$(dirname "$VOICE_CONFIG")"
 
-LOG_DIR="logs"
-mkdir -p "$LOG_DIR"
-PLAYIT_LOG="$LOG_DIR/playit.log"
-BINARY_DIR="tools/bin"
-mkdir -p "$BINARY_DIR"
-PLAYIT_BIN="$BINARY_DIR/playit"
+for status in playit_secret playit_agent minecraft_tunnel voice_tunnel svc_config voice_udp_socket; do
+    printf '%s\n' "UNVERIFIED" > "$DIAG_DIR/status_${status}.txt"
+done
 
 echo "=================================================="
-echo "   NEXUS NETWORK LAYER — PLAYIT.GG INTEGRATION"
+echo "   NEXUS NETWORK LAYER - PLAYIT.GG"
 echo "=================================================="
 
-# 1. Comprobar secrecía e inicializar estados
-DIAG_DIR="session_diagnostics"
-mkdir -p "$DIAG_DIR"
-
-echo "UNVERIFIED" > "$DIAG_DIR/status_playit_secret.txt"
-echo "UNVERIFIED" > "$DIAG_DIR/status_playit_agent.txt"
-echo "UNVERIFIED" > "$DIAG_DIR/status_minecraft_tunnel.txt"
-echo "UNVERIFIED" > "$DIAG_DIR/status_voice_tunnel.txt"
-echo "UNVERIFIED" > "$DIAG_DIR/status_svc_config.txt"
-
-# Función auxiliar para actualizar propiedades de forma idempotente conservando comentarios
 update_property() {
     local file="$1"
     local key="$2"
-    local val="$3"
+    local value="$3"
 
     if [ ! -f "$file" ]; then
-        mkdir -p "$(dirname "$file")"
-        touch "$file"
+        : > "$file"
     fi
 
     if grep -q "^[[:space:]]*${key}[[:space:]]*=" "$file"; then
-        sed -i "s|^[[:space:]]*${key}[[:space:]]*=.*|${key}=${val}|" "$file"
+        sed -i "s|^[[:space:]]*${key}[[:space:]]*=.*|${key}=${value}|" "$file"
     else
-        echo "${key}=${val}" >> "$file"
+        printf '%s=%s\n' "$key" "$value" >> "$file"
     fi
 }
 
-# Asegurar configuración base para Simple Voice Chat
-update_property "config/voicechat/voicechat-server.properties" "port" "24454"
-update_property "config/voicechat/voicechat-server.properties" "bind_address" "*"
+plain_playit_log() {
+    # Playit can emit ANSI sequences even when stdout is redirected.
+    sed -E $'s/\\x1B\\[[0-9;?]*[ -/]*[@-~]//g' "$PLAYIT_LOG" 2>/dev/null || true
+}
+
+mapping_endpoint() {
+    local local_port="$1"
+    plain_playit_log \
+        | grep -E "=>[[:space:]]+(127\\.0\\.0\\.1|localhost):${local_port}([[:space:]]|$)" \
+        | grep -oE '([A-Za-z0-9-]+\.)+(playit\.gg|ply\.gg)(:[0-9]+)?' \
+        | head -n 1 \
+        || true
+}
+
+is_public_endpoint() {
+    local endpoint="$1"
+    [ -n "$endpoint" ] \
+        && [[ "$endpoint" =~ ^([A-Za-z0-9-]+\.)+(playit\.gg|ply\.gg)(:[0-9]+)?$ ]] \
+        && [[ ! "$endpoint" =~ ^(localhost|127\.|0\.0\.0\.0|\[?::1\]?) ]]
+}
+
+# SVC must listen on all container/runner interfaces. voice_host is populated only
+# after the matching public UDP tunnel has been observed in the Playit log.
+update_property "$VOICE_CONFIG" "port" "24454"
+update_property "$VOICE_CONFIG" "bind_address" "*"
+update_property "$VOICE_CONFIG" "codec" "VOIP"
+update_property "$VOICE_CONFIG" "voice_host" ""
 
 if [ -z "${PLAYIT_SECRET:-}" ]; then
-    echo "[PLAYIT WARN] PLAYIT_SECRET no está configurada en los Secrets del Repositorio."
-    echo "NOT_CONFIGURED" > "$DIAG_DIR/status_playit_secret.txt"
-    echo "NOT_CONFIGURED" > "$DIAG_DIR/status_svc_config.txt"
-    echo "[PLAYIT WARN] El túnel no iniciará automáticamente. El servidor solo escuchará en localhost."
-    exit 0
+    echo "[PLAYIT ERROR] PLAYIT_SECRET is required for a public NEXUS session."
+    printf '%s\n' "NOT_CONFIGURED" > "$DIAG_DIR/status_playit_secret.txt"
+    printf '%s\n' "FAIL" > "$DIAG_DIR/status_playit_agent.txt"
+    exit 1
+fi
+printf '%s\n' "PASS" > "$DIAG_DIR/status_playit_secret.txt"
+
+case "$(uname -m)" in
+    x86_64|amd64)
+        PLAYIT_ASSET="playit-linux-amd64"
+        PLAYIT_SHA256="e78d463d93aa1e3ec36a06ded5a1f4fe879905fdceb865df8f4cef6124f8a555"
+        ;;
+    aarch64|arm64)
+        PLAYIT_ASSET="playit-linux-aarch64"
+        PLAYIT_SHA256="cd3fa1cedac40a71d80a120e6353e08836308840340b58e659e8f25d00601f66"
+        ;;
+    *)
+        echo "[PLAYIT ERROR] Unsupported architecture: $(uname -m)"
+        printf '%s\n' "FAIL" > "$DIAG_DIR/status_playit_agent.txt"
+        exit 1
+        ;;
+esac
+
+download_playit() {
+    local temp_binary="$PLAYIT_BIN.download"
+    local url="https://github.com/playit-cloud/playit-agent/releases/download/v${PLAYIT_VERSION}/${PLAYIT_ASSET}"
+
+    rm -f "$temp_binary"
+    echo "[PLAYIT] Downloading official agent v${PLAYIT_VERSION} for $(uname -m)..."
+    curl --fail --show-error --silent --location --retry 3 --retry-all-errors \
+        --proto '=https' --tlsv1.2 "$url" --output "$temp_binary"
+    printf '%s  %s\n' "$PLAYIT_SHA256" "$temp_binary" | sha256sum --check --strict
+    install -m 0755 "$temp_binary" "$PLAYIT_BIN"
+    rm -f "$temp_binary"
+}
+
+if [ -x "$PLAYIT_BIN" ]; then
+    INSTALLED_SHA256="$(sha256sum "$PLAYIT_BIN" | awk '{print $1}')"
+else
+    INSTALLED_SHA256=""
 fi
 
-echo "PASS" > "$DIAG_DIR/status_playit_secret.txt"
-
-# 2. Descargar binario oficial de Playit si no existe
-if [ ! -f "$PLAYIT_BIN" ]; then
-    ARCH=$(uname -m)
-    case "$ARCH" in
-        x86_64)
-            DOWNLOAD_URL="https://github.com/playit-cloud/playit-agent/releases/download/v0.15.26/playit-linux-amd64"
-            ;;
-        aarch64|arm64)
-            DOWNLOAD_URL="https://github.com/playit-cloud/playit-agent/releases/download/v0.15.26/playit-linux-arm64"
-            ;;
-        *)
-            echo "[PLAYIT ERROR] Arquitectura no soportada: $ARCH"
-            echo "FAIL" > "$DIAG_DIR/status_playit_agent.txt"
-            exit 1
-            ;;
-    esac
-
-    echo "[PLAYIT] Descargando agente Playit para $ARCH..."
-    curl -sSL -o "$PLAYIT_BIN" "$DOWNLOAD_URL" || {
-        echo "[PLAYIT WARN] Fallback a versión recomendada Playit v0.17.1..."
-        curl -sSL -o "$PLAYIT_BIN" "https://github.com/playit-cloud/playit-agent/releases/download/v0.17.1/playit-linux-amd64"
-    }
-    chmod +x "$PLAYIT_BIN"
-    echo "[PLAYIT] Agente descargado en $PLAYIT_BIN"
+if [ "$INSTALLED_SHA256" != "$PLAYIT_SHA256" ]; then
+    download_playit
+else
+    echo "[PLAYIT] Verified cached agent v${PLAYIT_VERSION}."
 fi
 
-# 3. Arrancar agente con sanitización de secrets
-echo "[PLAYIT] Iniciando daemon de Playit..."
+if [ -f "$LOG_DIR/playit.pid" ]; then
+    OLD_PLAYIT_PID="$(cat "$LOG_DIR/playit.pid" 2>/dev/null || true)"
+    if [[ "$OLD_PLAYIT_PID" =~ ^[0-9]+$ ]] && kill -0 "$OLD_PLAYIT_PID" 2>/dev/null; then
+        echo "[PLAYIT ERROR] An existing Playit process is still running (PID $OLD_PLAYIT_PID)."
+        exit 1
+    fi
+    rm -f "$LOG_DIR/playit.pid"
+fi
 
-("$PLAYIT_BIN" --secret "$PLAYIT_SECRET" start 2>&1 | sed -u "s/$PLAYIT_SECRET/[REDACTED]/g" > "$PLAYIT_LOG") &
+# Use a mode-0600 file instead of exposing the secret in the process list.
+PLAYIT_SECRET_FILE="$(mktemp "$BINARY_DIR/.playit-secret.XXXXXX")"
+chmod 600 "$PLAYIT_SECRET_FILE"
+printf '%s' "$PLAYIT_SECRET" > "$PLAYIT_SECRET_FILE"
+: > "$PLAYIT_LOG"
+
+"$PLAYIT_BIN" --stdout --secret_path "$PLAYIT_SECRET_FILE" start > "$PLAYIT_LOG" 2>&1 &
 PLAYIT_PID=$!
-echo "$PLAYIT_PID" > "$LOG_DIR/playit.pid"
+printf '%s\n' "$PLAYIT_PID" > "$LOG_DIR/playit.pid"
 
-echo "[PLAYIT] Agente lanzado en segundo plano (PID: $PLAYIT_PID)."
+# The agent reads the secret before entering its tunnel loop.
+sleep 2
+rm -f "$PLAYIT_SECRET_FILE"
+unset PLAYIT_SECRET_FILE
 
-# 4. Esperar autenticación y verificación de conexión inicial
-echo "[PLAYIT] Esperando autenticación y establecimiento de túneles (hasta 60s)..."
-ELAPSED=0
-while [ $ELAPSED -lt 60 ]; do
-    if grep -iE "tunnel runner.*established.*24454" "$PLAYIT_LOG" >/dev/null 2>&1; then
-        echo "[PLAYIT] Túneles establecidos detectados en el log."
+echo "[PLAYIT] Agent started as PID $PLAYIT_PID; waiting for both tunnel mappings..."
+
+MC_ENDPOINT=""
+VOICE_ENDPOINT=""
+for _ in $(seq 1 30); do
+    if ! kill -0 "$PLAYIT_PID" 2>/dev/null; then
+        echo "[PLAYIT ERROR] Agent stopped before its tunnels became ready."
+        tail -n 50 "$PLAYIT_LOG" || true
+        printf '%s\n' "FAIL" > "$DIAG_DIR/status_playit_agent.txt"
+        exit 1
+    fi
+
+    MC_ENDPOINT="$(mapping_endpoint 25565)"
+    VOICE_ENDPOINT="$(mapping_endpoint 24454)"
+    if [ -n "$MC_ENDPOINT" ] && [ -n "$VOICE_ENDPOINT" ]; then
         break
     fi
     sleep 3
-    ELAPSED=$((ELAPSED+3))
 done
 
-if ! kill -0 "$PLAYIT_PID" 2>/dev/null; then
-    echo "[PLAYIT ERROR] El agente Playit se detuvo prematuramente."
-    echo "FAIL" > "$DIAG_DIR/status_playit_agent.txt"
+if [ -z "$MC_ENDPOINT" ] || [ -z "$VOICE_ENDPOINT" ]; then
+    echo "[PLAYIT ERROR] Required mappings were not observed within 90 seconds."
+    echo "[PLAYIT ERROR] Minecraft='$MC_ENDPOINT' Voice='$VOICE_ENDPOINT'"
+    tail -n 80 "$PLAYIT_LOG" || true
+    printf '%s\n' "FAIL" > "$DIAG_DIR/status_playit_agent.txt"
+    [ -n "$MC_ENDPOINT" ] && printf '%s\n' "PASS" > "$DIAG_DIR/status_minecraft_tunnel.txt" \
+        || printf '%s\n' "FAIL" > "$DIAG_DIR/status_minecraft_tunnel.txt"
+    [ -n "$VOICE_ENDPOINT" ] && printf '%s\n' "PASS" > "$DIAG_DIR/status_voice_tunnel.txt" \
+        || printf '%s\n' "FAIL" > "$DIAG_DIR/status_voice_tunnel.txt"
     exit 1
 fi
 
-# Verificar autenticación/conexión real en los logs
-if grep -iE "agent connected|connected|registered|authenticated|tunnel runner|established" "$PLAYIT_LOG" >/dev/null 2>&1; then
-    echo "[PLAYIT SUCCESS] Evidencia de conexión/autenticación del agente Playit confirmada en logs."
-    echo "PASS" > "$DIAG_DIR/status_playit_agent.txt"
-else
-    echo "[PLAYIT WARN] No se encontró evidencia explícita de autenticación en logs. Agente en verificación."
-    echo "UNVERIFIED" > "$DIAG_DIR/status_playit_agent.txt"
+if ! is_public_endpoint "$VOICE_ENDPOINT"; then
+    echo "[PLAYIT ERROR] Refusing invalid voice endpoint: $VOICE_ENDPOINT"
+    printf '%s\n' "FAIL" > "$DIAG_DIR/status_voice_tunnel.txt"
+    exit 1
 fi
 
-# 5. Detección y verificación de túneles específicos y endpoints
-MC_ENDPOINT=$(grep -iE "25565|minecraft" "$PLAYIT_LOG" | grep -oE "([a-zA-Z0-9.-]+\.(playit\.gg|ply\.gg)(:[0-9]+)?)" | head -n 1 || true)
-if [ -n "$MC_ENDPOINT" ]; then
-    echo "[PLAYIT] Túnel Minecraft TCP 25565 verificado con endpoint: $MC_ENDPOINT"
-    echo "PASS" > "$DIAG_DIR/status_minecraft_tunnel.txt"
-else
-    echo "[PLAYIT INFO] Túnel Minecraft TCP 25565 pendiente o no detectado aún en logs."
-    echo "UNVERIFIED" > "$DIAG_DIR/status_minecraft_tunnel.txt"
+if [ -n "${VOICECHAT_PUBLIC_HOST:-}" ] && [ "$VOICECHAT_PUBLIC_HOST" != "$VOICE_ENDPOINT" ]; then
+    echo "[PLAYIT ERROR] VOICECHAT_PUBLIC_HOST does not match the active Playit UDP endpoint."
+    echo "[PLAYIT ERROR] Configured='$VOICECHAT_PUBLIC_HOST' Active='$VOICE_ENDPOINT'"
+    printf '%s\n' "FAIL" > "$DIAG_DIR/status_svc_config.txt"
+    exit 1
 fi
 
-VOICE_ENDPOINT=$(grep -iE "24454|voice" "$PLAYIT_LOG" | grep -oE "([a-zA-Z0-9.-]+\.(playit\.gg|ply\.gg)(:[0-9]+)?)" | head -n 1 || true)
+update_property "$VOICE_CONFIG" "voice_host" "$VOICE_ENDPOINT"
+printf '%s\n' "$VOICE_ENDPOINT" > "$DIAG_DIR/voicechat-public-endpoint.txt"
+printf '%s\n' "$MC_ENDPOINT" > "$DIAG_DIR/minecraft-public-endpoint.txt"
 
-if [ -n "$VOICE_ENDPOINT" ]; then
-    echo "[PLAYIT] Túnel Voice Chat UDP 24454 verificado con endpoint: $VOICE_ENDPOINT"
-    update_property "config/voicechat/voicechat-server.properties" "voice_host" "$VOICE_ENDPOINT"
+CONF_PORT="$(sed -n 's/^[[:space:]]*port[[:space:]]*=[[:space:]]*//p' "$VOICE_CONFIG" | tail -n 1)"
+CONF_BIND="$(sed -n 's/^[[:space:]]*bind_address[[:space:]]*=[[:space:]]*//p' "$VOICE_CONFIG" | tail -n 1)"
+CONF_HOST="$(sed -n 's/^[[:space:]]*voice_host[[:space:]]*=[[:space:]]*//p' "$VOICE_CONFIG" | tail -n 1)"
+
+if [ "$CONF_PORT" != "24454" ] || [ "$CONF_BIND" != "*" ] || [ "$CONF_HOST" != "$VOICE_ENDPOINT" ]; then
+    echo "[SVC ERROR] Generated voice configuration did not pass validation."
+    printf '%s\n' "FAIL" > "$DIAG_DIR/status_svc_config.txt"
+    exit 1
 fi
 
-# 6. Re-leer y confirmar configuración de Simple Voice Chat
-CONF_PORT=$(grep "^[[:space:]]*port=" "config/voicechat/voicechat-server.properties" | cut -d '=' -f 2- | tr -d ' ' || true)
-CONF_BIND=$(grep "^[[:space:]]*bind_address=" "config/voicechat/voicechat-server.properties" | cut -d '=' -f 2- | tr -d ' ' || true)
-CONF_HOST=$(grep "^[[:space:]]*voice_host=" "config/voicechat/voicechat-server.properties" | cut -d '=' -f 2- | tr -d ' ' || true)
+printf '%s\n' "PASS" > "$DIAG_DIR/status_playit_agent.txt"
+printf '%s\n' "PASS" > "$DIAG_DIR/status_minecraft_tunnel.txt"
+printf '%s\n' "PASS" > "$DIAG_DIR/status_voice_tunnel.txt"
+printf '%s\n' "PASS" > "$DIAG_DIR/status_svc_config.txt"
 
-if [ "$CONF_PORT" = "24454" ] && [ "$CONF_BIND" = "*" ] && [ -n "$CONF_HOST" ] && [ -n "$VOICE_ENDPOINT" ]; then
-    echo "[SVC SUCCESS] Configuración SVC validada: bind_address=* | voice_host=$CONF_HOST"
-    echo "PASS" > "$DIAG_DIR/status_voice_tunnel.txt"
-    echo "PASS" > "$DIAG_DIR/status_svc_config.txt"
-else
-    echo "[SVC INFO] Configuración base verificada (bind_address=* | port=24454). Pendiente de endpoint de túnel activo."
-    echo "UNVERIFIED" > "$DIAG_DIR/status_voice_tunnel.txt"
-    echo "UNVERIFIED" > "$DIAG_DIR/status_svc_config.txt"
-fi
-
-exit 0
+echo "[PLAYIT SUCCESS] Minecraft TCP: $MC_ENDPOINT => 127.0.0.1:25565"
+echo "[PLAYIT SUCCESS] Voice UDP:     $VOICE_ENDPOINT => 127.0.0.1:24454"
+echo "[SVC SUCCESS] voice_host=$VOICE_ENDPOINT | bind_address=* | port=24454/udp"

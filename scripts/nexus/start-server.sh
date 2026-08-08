@@ -1,30 +1,83 @@
 #!/usr/bin/env bash
-# ==============================================================================
-# NEXUS SERVER LAUNCHER & DYNAMIC RAM TUNER
-# Inicia Forge 1.20.1 con optimización de Heap, túnel de red y monitoreo
-# ==============================================================================
+# NEXUS Forge 1.20.1 launcher for the ephemeral GitHub Actions runner.
 
 set -euo pipefail
 
-LOG_DIR="logs"
-mkdir -p "$LOG_DIR"
-SERVER_LOG="$LOG_DIR/latest.log"
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$REPO_ROOT"
 
-mkdir -p "session_diagnostics"
-echo "⏳ INICIANDO" > "session_diagnostics/status_server.txt"
+readonly LOG_DIR="logs"
+readonly DIAG_DIR="session_diagnostics"
+readonly SERVER_LOG="$LOG_DIR/latest.log"
+readonly FIFO_PATH="server_stdin.fifo"
+
+mkdir -p "$LOG_DIR" "$DIAG_DIR"
+printf '%s\n' "STARTING" > "$DIAG_DIR/status_server.txt"
 
 OPERATION="${1:-run-server}"
-SESSION_MINUTES="${SESSION_MINUTES:-330}"
+SESSION_MINUTES="${SESSION_MINUTES:-325}"
+
+if ! [[ "$SESSION_MINUTES" =~ ^[0-9]+$ ]] || [ "$SESSION_MINUTES" -lt 1 ]; then
+    echo "[SESSION ERROR] SESSION_MINUTES must be a positive integer."
+    exit 1
+fi
+if [ "$SESSION_MINUTES" -gt 330 ]; then
+    echo "[SESSION ERROR] SESSION_MINUTES=$SESSION_MINUTES exceeds the safe 330-minute ceiling."
+    exit 1
+fi
+
+case "$OPERATION" in
+    run-server|validate|pregen) ;;
+    *) echo "[OPERATION ERROR] Unsupported operation: $OPERATION"; exit 1 ;;
+esac
+
+update_server_property() {
+    local key="$1"
+    local value="$2"
+    if grep -q "^${key}=" server.properties; then
+        sed -i "s|^${key}=.*|${key}=${value}|" server.properties
+    else
+        printf '%s=%s\n' "$key" "$value" >> server.properties
+    fi
+}
+
+set_forge_boolean_false() {
+    local file="$1"
+    local key="$2"
+    local temp_file=""
+
+    if grep -q "^[[:space:]]*${key}[[:space:]]*=" "$file"; then
+        sed -i -E "s/^[[:space:]]*${key}[[:space:]]*=.*/\t${key} = false/" "$file"
+        return
+    fi
+
+    temp_file="$(mktemp "${file}.XXXXXX")"
+    awk -v wanted_key="$key" '
+        /^\[general\][[:space:]]*$/ && !inserted {
+            print
+            printf "\t%s = false\n", wanted_key
+            inserted = 1
+            next
+        }
+        { print }
+        END {
+            if (!inserted) {
+                print ""
+                print "[general]"
+                printf "\t%s = false\n", wanted_key
+            }
+        }
+    ' "$file" > "$temp_file"
+    mv "$temp_file" "$file"
+}
 
 echo "=================================================="
-echo "   INICIANDO SERVIDOR NEXUS FORGE 1.20.1"
-echo "   Operación: $OPERATION"
+echo "   NEXUS FORGE 1.20.1 - $OPERATION"
 echo "=================================================="
 
-# 1. Cálculo dinámico de RAM (Heap)
-TOTAL_RAM_MB=$(free -m | awk '/^Mem:/{print $2}' || echo "8000")
-echo "[JVM] Memoria RAM total disponible en sistema: ${TOTAL_RAM_MB} MB"
-
+# Keep native memory headroom for Forge, Netty, compression and the OS.
+TOTAL_RAM_MB="$(free -m | awk '/^Mem:/{print $2}')"
 if [ "$TOTAL_RAM_MB" -ge 14000 ]; then
     XMX="10G"
     XMS="4G"
@@ -36,172 +89,199 @@ else
     XMS="2G"
 fi
 
-echo "[JVM] Configurando Heap dinámico: -Xms$XMS -Xmx$XMX"
+echo "[JVM] RAM=${TOTAL_RAM_MB}MB; heap -Xms${XMS} -Xmx${XMX}."
 cat << EOF > user_jvm_args.txt
 -Xms${XMS}
 -Xmx${XMX}
 -XX:+UseG1GC
 -XX:+ParallelRefProcEnabled
 -XX:MaxGCPauseMillis=200
--XX:+UnlockExperimentalVMOptions
 -XX:+DisableExplicitGC
 -XX:+AlwaysPreTouch
--XX:G1NewSizePercent=30
--XX:G1MaxNewSizePercent=40
--XX:G1HeapRegionSize=8M
--XX:G1ReservePercent=20
--XX:G1HeapWastePercent=5
--XX:G1MixedGCCountTarget=4
--XX:InitiatingHeapOccupancyPercent=15
--XX:G1MixedGCLiveThresholdPercent=90
--XX:G1RSetUpdatingPauseTimePercent=5
--XX:SurvivorRatio=32
 -XX:+PerfDisableSharedMem
--XX:MaxTenuringThreshold=1
+-XX:+UseStringDeduplication
+-XX:+ExitOnOutOfMemoryError
+-Xlog:gc*:file=logs/gc.log:time,uptime,level,tags:filecount=5,filesize=20M
 EOF
 
-# 2. Aceptar EULA
-echo "eula=true" > eula.txt
+printf '%s\n' "eula=true" > eula.txt
 
-# 3. Arrancar capa de red (Playit.gg) en segundo plano
 if [ -f "scripts/network/playit.sh" ]; then
-    bash scripts/network/playit.sh || echo "[PLAYIT WARN] Continuando sin agente de red Playit."
+    if ! bash scripts/network/playit.sh; then
+        if [ "$OPERATION" = "run-server" ]; then
+            echo "[PLAYIT FATAL] Public session aborted without verified TCP and UDP tunnels."
+            exit 1
+        fi
+        echo "[PLAYIT WARN] Network verification failed during local operation '$OPERATION'."
+    fi
 fi
 
-# 4. Preparar Fifo / tubería de entrada para enviar comandos al servidor
-FIFO_PATH="server_stdin.fifo"
 rm -f "$FIFO_PATH"
 mkfifo "$FIFO_PATH"
 exec 3<> "$FIFO_PATH"
 
-# 4.5. Configurar server.properties y Forge Anti-Crash
-if [ -f "server.properties" ]; then
-    echo "Ajustando propiedades del servidor..."
-    sed -i 's/^online-mode=true/online-mode=false/' server.properties
-    sed -i 's/^view-distance=.*/view-distance=6/' server.properties
-    sed -i 's/^simulation-distance=.*/simulation-distance=4/' server.properties
-    sed -i 's/^entity-broadcast-range-percentage=.*/entity-broadcast-range-percentage=50/' server.properties
-    sed -i 's/^network-compression-threshold=.*/network-compression-threshold=512/' server.properties
+if [ ! -f server.properties ]; then
+    : > server.properties
 fi
 
-echo "[OPTIMIZER] Activando Escudo Anti-Crasheos (removeErroringEntities) en Forge..."
+NEXUS_ONLINE_MODE="${NEXUS_ONLINE_MODE:-true}"
+if [ "$NEXUS_ONLINE_MODE" != "true" ] && [ "$NEXUS_ONLINE_MODE" != "false" ]; then
+    echo "[SECURITY ERROR] NEXUS_ONLINE_MODE must be true or false."
+    exit 1
+fi
+if [ "$NEXUS_ONLINE_MODE" = "false" ]; then
+    echo "[SECURITY WARN] Offline mode allows username impersonation."
+fi
+
+update_server_property "online-mode" "$NEXUS_ONLINE_MODE"
+update_server_property "enable-rcon" "false"
+update_server_property "rcon.password" ""
+update_server_property "view-distance" "${NEXUS_VIEW_DISTANCE:-6}"
+update_server_property "simulation-distance" "${NEXUS_SIMULATION_DISTANCE:-4}"
+update_server_property "entity-broadcast-range-percentage" "${NEXUS_ENTITY_RANGE_PERCENT:-50}"
+update_server_property "network-compression-threshold" "${NEXUS_COMPRESSION_THRESHOLD:-512}"
+
+# Preserve nexus-core as the targeted vaccine. Forge must not silently delete
+# a mod entity or block entity when an unrelated exception occurs.
 mkdir -p world/serverconfig
-cat << 'EOF' > world/serverconfig/forge-server.toml
+FORGE_SERVER_CONFIG="world/serverconfig/forge-server.toml"
+if [ ! -f "$FORGE_SERVER_CONFIG" ]; then
+    cat << 'EOF' > "$FORGE_SERVER_CONFIG"
 [general]
-	removeErroringEntities = true
-	removeErroringBlockEntities = true
+	removeErroringEntities = false
+	removeErroringBlockEntities = false
 EOF
-
-# 4.6. Inyección Dinámica de Optimización Extrema (FerriteCore, ModernFix)
-if [ -d "mods" ]; then
-    if [ -f "mods/radium.jar" ]; then
-        echo "[OPTIMIZER] Removiendo Radium Reforged (incompatible con entidades de Cataclysm/Citadel)..."
-        rm -f mods/radium.jar
-    fi
-    if [ ! -f "mods/ferritecore-6.0.1-forge.jar" ]; then
-        echo "[OPTIMIZER] Inyectando FerriteCore..."
-        curl -sL "https://cdn.modrinth.com/data/uXXizFIs/versions/DG5Fn9Sz/ferritecore-6.0.1-forge.jar" -o mods/ferritecore-6.0.1-forge.jar
-    fi
-    if [ ! -f "mods/modernfix-forge-5.27.66+mc1.20.1.jar" ]; then
-        echo "[OPTIMIZER] Inyectando ModernFix..."
-        curl -sL "https://cdn.modrinth.com/data/nmDcB62a/versions/ZxDvSMHV/modernfix-forge-5.27.66%2Bmc1.20.1.jar" -o mods/modernfix-forge-5.27.66+mc1.20.1.jar
-    fi
+else
+    set_forge_boolean_false "$FORGE_SERVER_CONFIG" "removeErroringEntities"
+    set_forge_boolean_false "$FORGE_SERVER_CONFIG" "removeErroringBlockEntities"
 fi
 
-# 5. Arrancar Forge Dedicated Server
-chmod +x run.sh || true
-echo "[MINECRAFT] Ejecutando ./run.sh nogui..."
+# The signed/checksummed bundle is the only source of runtime mods. Downloading
+# jars during every boot made deployments non-reproducible and bypassed review.
+if find mods -maxdepth 1 -type f -iname '*radium*.jar' -print -quit 2>/dev/null | grep -q .; then
+    echo "[MOD ERROR] Radium is prohibited for this Cataclysm/Citadel pack."
+    exit 1
+fi
+if ! find mods -maxdepth 1 -type f -iname '*ferritecore*.jar' -print -quit 2>/dev/null | grep -q .; then
+    echo "[OPTIMIZER WARN] FerriteCore is absent from the verified bundle."
+fi
+if ! find mods -maxdepth 1 -type f -iname '*modernfix*.jar' -print -quit 2>/dev/null | grep -q .; then
+    echo "[OPTIMIZER WARN] ModernFix is absent from the verified bundle."
+fi
 
+if [ ! -f run.sh ]; then
+    echo "[MINECRAFT ERROR] run.sh is missing from the verified bundle."
+    exit 1
+fi
+chmod +x run.sh
+: > "$SERVER_LOG"
+
+echo "[MINECRAFT] Starting Forge..."
 ./run.sh nogui < "$FIFO_PATH" > >(tee -a "$SERVER_LOG") 2>&1 &
 SERVER_PID=$!
-echo "$SERVER_PID" > "$LOG_DIR/server.pid"
+printf '%s\n' "$SERVER_PID" > "$LOG_DIR/server.pid"
+echo "[MINECRAFT] Java PID: $SERVER_PID"
 
-echo "[MINECRAFT] Servidor lanzado con PID: $SERVER_PID. Esperando inicio de Forge..."
-
-# 6. Monitoreo de booteo (esperar hasta ver mensaje "Done (")
 BOOT_TIMEOUT=300
 ELAPSED=0
 BOOTED=false
-
-while [ $ELAPSED -lt $BOOT_TIMEOUT ]; do
+while [ "$ELAPSED" -lt "$BOOT_TIMEOUT" ]; do
     if ! kill -0 "$SERVER_PID" 2>/dev/null; then
-        echo "[CRASH FATAL] El proceso Java de Forge se detuvo prematuramente."
-        echo "=== ÚLTIMAS 50 LÍNEAS DE LOG DE ERROR ==="
-        tail -n 50 "$SERVER_LOG"
-        echo "❌ CRASHED" > "session_diagnostics/status_server.txt"
+        echo "[CRASH FATAL] Forge stopped before completing startup."
+        tail -n 80 "$SERVER_LOG" || true
+        printf '%s\n' "CRASHED" > "$DIAG_DIR/status_server.txt"
         exit 1
     fi
 
     if grep -qE 'Done \([0-9]+\.[0-9]+s\)!|Done \([0-9]+\.[0-9]+s\)' "$SERVER_LOG"; then
         BOOTED=true
-        echo "[MINECRAFT SUCCESS] Servidor Forge iniciado correctamente en ${ELAPSED}s."
-        echo "✅ ONLINE" > "session_diagnostics/status_server.txt"
+        printf '%s\n' "ONLINE" > "$DIAG_DIR/status_server.txt"
+        echo "[MINECRAFT SUCCESS] Forge reached Done in ${ELAPSED}s."
         break
     fi
-
     sleep 3
-    ELAPSED=$((ELAPSED+3))
+    ELAPSED=$((ELAPSED + 3))
 done
 
-if [ "$BOOTED" = false ]; then
-    echo "[TIMEOUT ERROR] El servidor no alcanzó el estado 'Done' dentro de ${BOOT_TIMEOUT}s."
-    echo "=== ÚLTIMAS 50 LÍNEAS DE LOG ==="
-    tail -n 50 "$SERVER_LOG"
-    echo "❌ TIMEOUT" > "session_diagnostics/status_server.txt"
+if [ "$BOOTED" != "true" ]; then
+    echo "[TIMEOUT ERROR] Forge did not reach Done within ${BOOT_TIMEOUT}s."
+    tail -n 80 "$SERVER_LOG" || true
+    printf '%s\n' "TIMEOUT" > "$DIAG_DIR/status_server.txt"
     exit 1
 fi
 
-# 7. Ejecución según la operación solicitada
+HEALTHY=false
+if [ -f "scripts/nexus/healthcheck.sh" ]; then
+    for _ in $(seq 1 5); do
+        if bash scripts/nexus/healthcheck.sh; then
+            HEALTHY=true
+            break
+        fi
+        sleep 2
+    done
+else
+    echo "[HEALTHCHECK ERROR] scripts/nexus/healthcheck.sh is missing."
+fi
+
+if [ "$HEALTHY" != "true" ]; then
+    if [ "$OPERATION" = "run-server" ]; then
+        echo "[HEALTHCHECK FATAL] Public session aborted because TCP/UDP readiness is incomplete."
+        exit 1
+    fi
+    echo "[HEALTHCHECK WARN] Readiness incomplete during '$OPERATION'."
+fi
+
 if [ "$OPERATION" = "validate" ]; then
-    echo "[FIRST_BOOT_TEST] Validación de booteo completada exitosamente."
-    echo "[FIRST_BOOT_TEST] Ejecutando cierre limpio..."
+    echo "[VALIDATE] Boot validation completed; stopping cleanly."
     bash scripts/nexus/stop-server.sh
     exit 0
-elif [ "$OPERATION" = "pregen" ]; then
+fi
+
+if [ "$OPERATION" = "pregen" ]; then
     PREGEN_RADIUS="${PREGEN_RADIUS:-500}"
-    echo "[PREGEN] Iniciando pre-generación Chunky con radio $PREGEN_RADIUS bloques..."
-    echo "chunky radius $PREGEN_RADIUS" > "$FIFO_PATH"
+    echo "[PREGEN] Starting Chunky radius $PREGEN_RADIUS."
+    printf '%s\n' "chunky radius $PREGEN_RADIUS" > "$FIFO_PATH"
     sleep 2
-    echo "chunky start" > "$FIFO_PATH"
-    sleep 10
-    echo "[PREGEN] Tarea de pre-generación enviada. Esperando 120s..."
+    printf '%s\n' "chunky start" > "$FIFO_PATH"
     sleep 120
-    echo "[PREGEN] Guardando progreso..."
-    echo "save-all" > "$FIFO_PATH"
+    printf '%s\n' "save-all" > "$FIFO_PATH"
     sleep 10
     bash scripts/nexus/stop-server.sh
     exit 0
 fi
 
-# 8. Mantenimiento de sesión para 'run-server'
-echo "[SESSION] Servidor en línea. Manteniendo sesión activa durante ${SESSION_MINUTES} minutos..."
+echo "[SESSION] Public server online for at most ${SESSION_MINUTES} minutes."
 SESSION_SECONDS=$((SESSION_MINUTES * 60))
 WARN_5M=$((SESSION_SECONDS - 300))
 WARN_1M=$((SESSION_SECONDS - 60))
-
 ELAPSED_SESSION=0
-while [ $ELAPSED_SESSION -lt $SESSION_SECONDS ]; do
+SERVER_EXITED=false
+
+while [ "$ELAPSED_SESSION" -lt "$SESSION_SECONDS" ]; do
     if ! kill -0 "$SERVER_PID" 2>/dev/null; then
-        echo "[SERVER WARN] El proceso Java finalizó."
+        echo "[SERVER ERROR] Java exited during the public session."
+        printf '%s\n' "CRASHED" > "$DIAG_DIR/status_server.txt"
+        SERVER_EXITED=true
         break
     fi
 
-    if [ $ELAPSED_SESSION -eq $WARN_5M ] && [ $WARN_5M -gt 0 ]; then
-        echo 'say §c[AVISO] El servidor se reiniciará en 5 minutos para guardar progreso.' > "$FIFO_PATH"
+    if [ "$ELAPSED_SESSION" -eq "$WARN_5M" ] && [ "$WARN_5M" -gt 0 ]; then
+        printf '%s\n' 'say [NEXUS] Restart in 5 minutes; world backup will follow.' > "$FIFO_PATH"
     fi
-
-    if [ $ELAPSED_SESSION -eq $WARN_1M ] && [ $WARN_1M -gt 0 ]; then
-        echo 'say §c[AVISO CRÍTICO] El servidor se apaga en 1 minuto. Por favor guarden su avance.' > "$FIFO_PATH"
+    if [ "$ELAPSED_SESSION" -eq "$WARN_1M" ] && [ "$WARN_1M" -gt 0 ]; then
+        printf '%s\n' 'say [NEXUS] Restart in 1 minute; please finish current actions.' > "$FIFO_PATH"
     fi
-
-    # Keep-Alive para evitar que GitHub Actions cierre la máquina por inactividad de consola
-    if [ $((ELAPSED_SESSION % 300)) -eq 0 ] && [ $ELAPSED_SESSION -gt 0 ]; then
-        echo "[KEEP-ALIVE] El servidor sigue corriendo. Tiempo: $((ELAPSED_SESSION / 60)) min."
+    if [ $((ELAPSED_SESSION % 300)) -eq 0 ] && [ "$ELAPSED_SESSION" -gt 0 ]; then
+        echo "[KEEP-ALIVE] $((ELAPSED_SESSION / 60)) minutes elapsed."
     fi
 
     sleep 15
-    ELAPSED_SESSION=$((ELAPSED_SESSION+15))
+    ELAPSED_SESSION=$((ELAPSED_SESSION + 15))
 done
 
-echo "[SESSION] Límite de sesión alcanzado. Iniciando guardado y apagado limpio..."
+echo "[SESSION] Stopping and syncing before the persistence stage."
 bash scripts/nexus/stop-server.sh
+
+if [ "$SERVER_EXITED" = "true" ]; then
+    exit 1
+fi

@@ -13,9 +13,9 @@ on:
           - "pregen"
           - "validate"
       session_minutes:
-        description: "Duración máxima de la sesión en minutos (máx 350)"
+        description: "Duración de juego en minutos (máximo seguro 330)"
         required: false
-        default: "345"
+        default: "325"
       restore_world:
         description: "Restaurar estado guardado del mundo desde NEXUS STORAGE"
         required: false
@@ -43,17 +43,21 @@ env:
   STORAGE_REPO: "cleoleobel/nexus-storage"
   NEXUS_STORAGE_TOKEN: ${{ secrets.NEXUS_STORAGE_TOKEN }}
   PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
-  NEXUS_SERVER_VERSION: "2026.08.07-01"
+  VOICECHAT_PUBLIC_HOST: ${{ vars.VOICECHAT_PUBLIC_HOST }}
+  NEXUS_OPERATION: ${{ inputs.operation || 'run-server' }}
+  SESSION_MINUTES: ${{ inputs.session_minutes || '325' }}
+  RESTORE_WORLD: ${{ inputs.restore_world || 'yes' }}
+  NEXUS_SERVER_VERSION: "2026.08.08-01"
 
 jobs:
   nexus-server:
     name: Despliegue NEXUS Dedicated Server
     runs-on: ubuntu-22.04
-    timeout-minutes: 350
+    timeout-minutes: 355
 
     steps:
       - name: ETAPA 1 - Checkout Repositorio Runner
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       - name: ETAPA 1.2 - Validar Secretos y Variables
         run: |
@@ -64,7 +68,12 @@ jobs:
             fallo=1
           fi
           if [ -z "${PLAYIT_SECRET:-}" ]; then
-            echo "::warning::PLAYIT_SECRET no configurado. El servidor solo se abrirá localmente."
+            if [ "$NEXUS_OPERATION" = "run-server" ]; then
+              echo "::error::PLAYIT_SECRET es obligatorio para una sesión pública con TCP y UDP."
+              fallo=1
+            else
+              echo "::warning::PLAYIT_SECRET no configurado durante $NEXUS_OPERATION."
+            fi
           fi
           if [ "$fallo" -eq 1 ]; then
             exit 1
@@ -89,7 +98,7 @@ jobs:
           echo ""
 
       - name: ETAPA 3 - Instalar Java 17 JDK
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -105,7 +114,7 @@ jobs:
 
       - name: ETAPA 6 - Extraer Servidor Forge
         run: |
-          tar -xzf download_bundle/server-bundle.tar.gz -C ./
+          tar --no-same-owner --no-same-permissions -xzf download_bundle/server-bundle.tar.gz -C ./
           rm -rf download_bundle
 
       - name: ETAPA 6.5 - Compilar e Inyectar Mod Anti-Crash (nexus-core)
@@ -118,15 +127,10 @@ jobs:
       - name: ETAPA 7 - Restaurar Estado Persistente del Mundo
         run: |
           bash scripts/nexus/restore-world.sh
-        env:
-          RESTORE_WORLD: ${{ inputs.restore_world }}
 
       - name: ETAPA 8, 9, 10, 11 & 13 - Ejecutar Servidor NEXUS y Mantener Sesión
         run: |
-          bash scripts/nexus/start-server.sh "${{ inputs.operation }}"
-        env:
-          SESSION_MINUTES: ${{ inputs.session_minutes }}
-          DEBUG_MODE: ${{ inputs.debug_mode }}
+          bash scripts/nexus/start-server.sh "$NEXUS_OPERATION"
 
       # (Step Summary movido al final del workflow)
 
@@ -169,6 +173,7 @@ jobs:
           echo "| PLAYIT_AGENT | $(get_status playit_agent) |" >> $GITHUB_STEP_SUMMARY
           echo "| MINECRAFT_TUNNEL | $(get_status minecraft_tunnel) |" >> $GITHUB_STEP_SUMMARY
           echo "| VOICE_TUNNEL | $(get_status voice_tunnel) |" >> $GITHUB_STEP_SUMMARY
+          echo "| VOICE_UDP_SOCKET | $(get_status voice_udp_socket) |" >> $GITHUB_STEP_SUMMARY
           echo "| SVC_CONFIG | $(get_status svc_config) |" >> $GITHUB_STEP_SUMMARY
           
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -190,12 +195,12 @@ jobs:
           NEXUS SESSION SUMMARY
           Version: $NEXUS_SERVER_VERSION
           Date: $(date)
-          Operation: ${{ inputs.operation }}
+          Operation: $NEXUS_OPERATION
           EOF
 
       - name: ETAPA 20.2 - Subir Diagnóstico como Artefacto
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: nexus-session-diagnostics-run${{ github.run_number }}
           path: session_diagnostics/
