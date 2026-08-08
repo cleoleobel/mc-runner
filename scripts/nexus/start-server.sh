@@ -74,14 +74,23 @@ rm -f "$FIFO_PATH"
 mkfifo "$FIFO_PATH"
 exec 3<> "$FIFO_PATH"
 
-# 4.5. Configurar modo No Premium y Optimización de Rendimiento Extrema
+# 4.5. Configurar server.properties y Forge Anti-Crash
 if [ -f "server.properties" ]; then
+    echo "Ajustando propiedades del servidor..."
     sed -i 's/^online-mode=true/online-mode=false/' server.properties
-    sed -i 's/^view-distance=.*/view-distance=7/' server.properties
-    sed -i 's/^simulation-distance=.*/simulation-distance=5/' server.properties
+    sed -i 's/^view-distance=.*/view-distance=6/' server.properties
+    sed -i 's/^simulation-distance=.*/simulation-distance=4/' server.properties
     sed -i 's/^entity-broadcast-range-percentage=.*/entity-broadcast-range-percentage=50/' server.properties
     sed -i 's/^network-compression-threshold=.*/network-compression-threshold=512/' server.properties
 fi
+
+echo "[OPTIMIZER] Activando Escudo Anti-Crasheos (removeErroringEntities) en Forge..."
+mkdir -p world/serverconfig
+cat << 'EOF' > world/serverconfig/forge-server.toml
+[general]
+	removeErroringEntities = true
+	removeErroringBlockEntities = true
+EOF
 
 # 4.6. Inyección Dinámica de Optimización Extrema (FerriteCore, ModernFix)
 if [ -d "mods" ]; then
