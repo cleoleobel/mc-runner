@@ -126,7 +126,7 @@ if (Test-Path $VoiceConfigFile) {
     } else {
         $vContent += "`nport=24454`n"
     }
-    Set-Content -Path $VoiceConfigFile -Value $vContent -Encoding UTF8
+    [System.IO.File]::WriteAllText($VoiceConfigFile, $vContent)
 }
 
 Write-Host "[3/8] Copiando TaCZ Gunpack y Datapacks..." -ForegroundColor Yellow
@@ -162,11 +162,11 @@ if (Test-Path $WorkServerDir) {
 $RunShPath = Join-Path $StagingDir "run.sh"
 if (-not (Test-Path $RunShPath)) {
     $RunShContent = '#!/usr/bin/env sh' + "`n" + 'java @user_jvm_args.txt @libraries/net/minecraftforge/forge/1.20.1-47.4.0/unix_args.txt "$@"' + "`n"
-    Set-Content -Path $RunShPath -Value $RunShContent -Encoding UTF8
+    [System.IO.File]::WriteAllText($RunShPath, $RunShContent)
 }
 
 Write-Host "[5/8] Configurando server.properties y eula.txt..." -ForegroundColor Yellow
-Set-Content -Path (Join-Path $StagingDir "eula.txt") -Value "eula=true" -Encoding UTF8
+[System.IO.File]::WriteAllText((Join-Path $StagingDir "eula.txt"), "eula=true")
 
 $ServerProps = @"
 server-port=25565
@@ -180,7 +180,7 @@ online-mode=true
 allow-flight=true
 motd=Servidor NEXUS Dedicated Forge 1.20.1
 "@
-Set-Content -Path (Join-Path $StagingDir "server.properties") -Value $ServerProps -Encoding UTF8
+[System.IO.File]::WriteAllText((Join-Path $StagingDir "server.properties"), $ServerProps)
 
 Write-Host "[6/8] Generando manifest.json..." -ForegroundColor Yellow
 $ModFiles = Get-ChildItem -Path (Join-Path $StagingDir "mods") -Filter "*.jar"
@@ -194,8 +194,8 @@ $ManifestObj = [ordered]@{
     mod_list = ($ModFiles | Select-Object -ExpandProperty Name)
 }
 $ManifestJson = $ManifestObj | ConvertTo-Json -Depth 5
-Set-Content -Path (Join-Path $StagingDir "manifest.json") -Value $ManifestJson -Encoding UTF8
-Set-Content -Path (Join-Path $FinalOutputDir "manifest.json") -Value $ManifestJson -Encoding UTF8
+[System.IO.File]::WriteAllText((Join-Path $StagingDir "manifest.json"), $ManifestJson)
+[System.IO.File]::WriteAllText((Join-Path $FinalOutputDir "manifest.json"), $ManifestJson)
 
 Write-Host "[7/8] Comprimiendo distribucion..." -ForegroundColor Yellow
 $TarGzPath = Join-Path $FinalOutputDir "server-bundle.tar.gz"
@@ -215,7 +215,7 @@ if (-not (Test-Path $TarGzPath)) {
 Write-Host "[8/8] Calculando SHA-256 del bundle..." -ForegroundColor Yellow
 $Hash = (Get-FileHash -Path $TarGzPath -Algorithm SHA256).Hash.ToLower()
 $ChecksumContent = "$Hash  server-bundle.tar.gz`n"
-Set-Content -Path (Join-Path $FinalOutputDir "checksums.sha256") -Value $ChecksumContent -Encoding UTF8
+[System.IO.File]::WriteAllText((Join-Path $FinalOutputDir "checksums.sha256"), $ChecksumContent)
 
 # Limpiar staging
 Remove-Item -Recurse -Force $StagingDir
