@@ -51,7 +51,7 @@ jobs:
 
     steps:
       - name: ETAPA 1 - Checkout Repositorio Runner
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: ETAPA 1.2 - Validar Secretos y Variables
         run: |
@@ -87,7 +87,7 @@ jobs:
           echo ""
 
       - name: ETAPA 3 - Instalar Java 17 JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -186,7 +186,7 @@ jobs:
 
       - name: ETAPA 20.2 - Subir Diagnóstico como Artefacto
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: nexus-session-diagnostics-run${{ github.run_number }}
           path: session_diagnostics/
