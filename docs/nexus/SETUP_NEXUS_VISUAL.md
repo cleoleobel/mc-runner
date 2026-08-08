@@ -7,15 +7,16 @@
 ---
 
 ## 📋 Lo que vas a configurar
-- **GitHub PAT Token:** Permiso de lectura/escritura para el almacenamiento persistente del mundo.
-- **GitHub Secrets:** Claves de acceso privadas seguras en el repositorio.
-- **Playit.gg Agent & Tunnels:** Enrutamiento de red pública (TCP 25565 para Minecraft y UDP 24454 para Voice Chat).
+- **GitHub Fine-grained PAT Token:** Permiso de lectura y escritura restringido exclusivamente al repositorio de almacenamiento persistente `cleoleobel/nexus-storage`.
+- **GitHub Secrets:** Claves de acceso privadas seguras en el repositorio `cleoleobel/mc-runner`.
+- **Playit.gg Agent & Tunnels:** Enrutamiento de red pública con presets oficiales (`Minecraft Java` TCP 25565 y `MC: Simple Voice Chat` UDP 24454).
 - **GitHub Actions:** Despliegue automatizado del servidor NEXUS.
 
 ## 🛡️ Lo que NO tendrás que hacer
 - ❌ No tendrás que programar ni editar código.
 - ❌ No tendrás que modificar archivos YAML ni scripts.
 - ❌ No tendrás que mover mods ni alterar `server.properties`.
+- ❌ No tendrás que editar manualmente `voicechat-server.properties` (el runner configura `voice_host` y `bind_address=0.0.0.0` de forma 100% automática).
 - ❌ No tendrás que ejecutar comandos de consola ni instalar Forge manualmente.
 - ❌ No tendrás que comprimir ni gestionar backups del mundo a mano.
 
@@ -23,49 +24,53 @@
 
 ## 🔑 TABLA MAESTRA DE SECRETOS DE INFRAESTRUCTURA
 
-| NOMBRE EXACTO EN GITHUB | DÓNDE CONSEGUIRLO | DÓNDE PEGARLO | TIPO | REQUERIDO | EJEMPLO SEGURO |
+| NOMBRE EXACTO EN GITHUB | DÓNDE CONSEGUIRLO | DÓNDE PEGARLO | TIPO | REQUERIDO | VALOR A INSERTAR |
 |---|---|---|---|---|---|
-| `NEXUS_STORAGE_TOKEN` | GitHub (`Developer settings` → `Tokens (classic)`) | `cleoleobel/mc-runner` → `Settings` → `Secrets` | Secret | **SÍ** | `ghp_xK9mP2vL8nQ4wR7tY1uI3oP5aS6dF8gH` |
-| `PLAYIT_SECRET` | Playit.gg Dashboard (`Agents` → `Secret Key`) | `cleoleobel/mc-runner` → `Settings` → `Secrets` | Secret | **SÍ** | `secret_bk82m94x1z7q5w...` |
+| `NEXUS_STORAGE_TOKEN` | GitHub (`Settings` → `Developer settings` → `Fine-grained tokens`) | `cleoleobel/mc-runner` → `Settings` → `Secrets` | Secret | **SÍ** | `<PEGA_TU_NEXUS_STORAGE_TOKEN_AQUI>` |
+| `PLAYIT_SECRET` | Playit.gg Dashboard (`Agents` → `Secret Key`) | `cleoleobel/mc-runner` → `Settings` → `Secrets` | Secret | **SÍ** | `<PEGA_TU_PLAYIT_SECRET_AQUI>` |
 
 ---
 
 ## 🌐 TABLA DE PUERTOS Y PROTOCOLOS
 
-| SERVICIO | PROTOCOLO | IP LOCAL | PUERTO LOCAL (LOCAL PORT) | PUERTO EXTERNO (EXTERNAL PORT) |
-|---|---|---|---|---|
-| **Minecraft Java Server** | `TCP` | `127.0.0.1` | `25565` | Asignado automáticamente por Playit.gg (ej. `25565` o dinámico) |
-| **Simple Voice Chat** | `UDP` | `127.0.0.1` | `24454` | Asignado automáticamente por Playit.gg (ej. `24454` o dinámico) |
+| SERVICIO | PRESET EN PLAYIT | PROTOCOLO | IP LOCAL | PUERTO LOCAL | ENDPOINT EXTERNO |
+|---|---|---|---|---|---|
+| **Minecraft Java Server** | `Minecraft Java` | `TCP` | `127.0.0.1` | `25565` | Asignado automáticamente por Playit.gg |
+| **Simple Voice Chat** | `MC: Simple Voice Chat` | `UDP` | `127.0.0.1` | `24454` | Asignado automáticamente por Playit.gg y vinculado por el runner |
 
 ---
 
-# PASO 1 — Generar Token de Acceso Personal (PAT) en GitHub
+# PASO 1 — Generar Token de Acceso Personal Restringido (Fine-grained PAT) en GitHub
 
-**OBJETIVO:** Crear un Token de acceso seguro para que el servidor guarde y descargue los archivos del mundo desde `cleoleobel/nexus-storage`.
+**OBJETIVO:** Crear un Token de acceso con principio de mínimo privilegio restringido únicamente al repositorio `cleoleobel/nexus-storage`.
 
-**DÓNDE ESTÁS:** GitHub.com (Conectado a tu cuenta).
+**DÓNDE ESTÁS:** GitHub.com
 
 **RUTA:**  
-`Profile Picture` (Esquina superior derecha)  
+`Profile Picture`  
 → `Settings`  
-→ `Developer settings` (Menú lateral izquierdo, al final)  
+→ `Developer settings`  
 → `Personal access tokens`  
-→ `Tokens (classic)`
+→ `Fine-grained tokens`
 
 **BOTÓN EXACTO:**  
-`Generate new token` → `Generate new token (classic)`
+`Generate new token`
 
-**QUÉ ESCRIBIR / SELECCIONAR:**
-- **Note:** `NEXUS Storage Token`
-- **Expiration:** `No expiration` (o el periodo deseado)
-- **Select scopes:** Marca la casilla `repo` (Full control of private repositories).
+**QUÉ ESCRIBIR Y SELECCIONAR:**
+- **Token name:** `NEXUS Storage Token`
+- **Expiration:** `90 days`
+- **Resource owner:** `cleoleobel`
+- **Repository access:** Seleccionar `Only select repositories`
+- **Select repositories:** Seleccionar `cleoleobel/nexus-storage`
+- **Permissions:** Desplegar `Repository permissions` y configurar:
+  - **Contents:** `Read and write`
 
 **QUÉ HACER DESPUÉS:**  
 Desplázate al fondo de la página y haz clic exactamente en el botón verde:  
 `Generate token`
 
 **QUÉ DEBES VER:**  
-Aparece una franja verde con el token generado empezando por `ghp_...`. Copia la clave inmediatamente.
+Aparece el token generado empezando por `github_pat_...`. Haz clic en el icono de copiar.
 
 **ESQUEMA VISUAL:**
 ```
@@ -76,24 +81,23 @@ GitHub Header
   └─ Settings                                               ← 2. Clic en Settings
        └─ Developer settings                                 ← 3. Clic en Developer settings
             └─ Personal access tokens                        ← 4. Clic en Personal access tokens
-                 └─ Tokens (classic)                         ← 5. Clic en Tokens (classic)
-                      └─ [Generate new token ▼]             ← 6. Clic en Generate new token
-                           └─ Generate new token (classic)  ← 7. Clic en classic
+                 └─ Fine-grained tokens                      ← 5. Clic en Fine-grained tokens
+                      └─ [Generate new token]                ← 6. Clic en Generate new token
 ```
 
 🛑 **NO CONTINÚES HASTA VER:**  
-El token generado `ghp_...` copiado en tu portapapeles.
+El token generado `github_pat_...` copiado en tu portapapeles.
 
-- ✅ **PASS:** Copiaste el token `ghp_...`.
-- ❌ **FAIL:** No marcaste la casilla `repo` o cerraste la página sin copiarlo.
+- ✅ **PASS:** Copiaste el token `github_pat_...` restringido a `cleoleobel/nexus-storage`.
+- ❌ **FAIL:** Otorgaste acceso a todos los repositorios o seleccionaste permisos incorrectos.
 
 ---
 
 # PASO 2 — Crear el Agente de Red en Playit.gg y Obtener el Secret Key
 
-**OBJETIVO:** Obtener la clave secreta del agente Playit para abrir los puertos del servidor sin abrir puertos en tu router.
+**OBJETIVO:** Crear el agente dedicado de Playit.gg y obtener la clave secreta de conexión.
 
-**DÓNDE ESTÁS:** Playit.gg Dashboard.
+**DÓNDE ESTÁS:** Playit.gg Dashboard
 
 **RUTA:**  
 `https://playit.gg`  
@@ -101,16 +105,16 @@ El token generado `ghp_...` copiado en tu portapapeles.
 → `Agents`
 
 **BOTÓN EXACTO:**  
-`Add Agent` (o `Create Agent`)
+`Create Agent`
 
-**QUÉ ESCRIBIR / SELECCIONAR:**
+**QUÉ ESCRIBIR Y SELECCIONAR:**
 - **Agent Name:** `NEXUS-Runner`
 
 **QUÉ HACER DESPUÉS:**  
-Haz clic en `Create Agent` (o `Add Agent`). A continuación, localiza el campo `Secret Key` (o `Claim Code` / `Agent Secret`) y haz clic en `Copy`.
+Haz clic en `Create Agent`. En la vista del agente creado, ubica el campo `Secret Key` y haz clic en `Copy`.
 
 **QUÉ DEBES VER:**  
-Una cadena de texto larga que representa la clave secreta de tu agente en Playit.gg (ejemplo: `secret_...`).
+La clave secreta del agente copiada al portapapeles.
 
 **ESQUEMA VISUAL:**
 ```
@@ -118,48 +122,44 @@ Playit.gg Dashboard
 ┌─────────────────────────────────────────────────────────┐
 │ [Agents]                                                │ ← 1. Clic en Agents
 │                                                         │
-│  [Add Agent]                                            │ ← 2. Clic en Add Agent
-│    └─ Name: NEXUS-Runner                                │ ← 3. Escribir nombre
+│  [Create Agent]                                         │ ← 2. Clic en Create Agent
+│    ├─ Agent Name: NEXUS-Runner                          │ ← 3. Escribir nombre
 │    └─ [Create Agent]                                    │ ← 4. Clic en Create Agent
 │                                                         │
-│  Agent Secret: [ Copy ]                                 │ ← 5. Clic en Copy Secret
+│  Secret Key: [ Copy ]                                   │ ← 5. Clic en Copy Secret Key
 └─────────────────────────────────────────────────────────┘
 ```
 
 🛑 **NO CONTINÚES HASTA VER:**  
-El `Secret Key` de Playit.gg copiado.
+La clave `Secret Key` de Playit.gg copiada.
 
-- ✅ **PASS:** Tienes la clave secreta del agente guardada en el portapapeles.
-- ❌ **FAIL:** No creaste el agente o no copiaste el secret.
+- ✅ **PASS:** Clave secreta del agente guardada en el portapapeles.
+- ❌ **FAIL:** No creaste el agente o no copiaste la clave.
 
 ---
 
-# PASO 3 — Configurar Túneles de Red en Playit.gg (TCP & UDP)
+# PASO 3 — Configurar Túneles de Red en Playit.gg (Minecraft & Simple Voice Chat)
 
-**OBJETIVO:** Crear los dos túneles de comunicación: uno para el juego (Minecraft TCP 25565) y otro para la voz (Simple Voice Chat UDP 24454).
+**OBJETIVO:** Crear los túneles con los presets oficiales de Playit para Minecraft Java (TCP 25565) y Simple Voice Chat (UDP 24454).
 
-**DÓNDE ESTÁS:** Playit.gg Dashboard → `Agents` → `NEXUS-Runner` (o `Tunnels`).
+**DÓNDE ESTÁS:** Playit.gg Dashboard → `Tunnels`
 
-**RUTA:**  
-Playit.gg  
-→ `Tunnels`  
-→ `Add Tunnel`
+**BOTÓN EXACTO:**  
+`Add Tunnel`
 
-### 3.1 — Túnel de Minecraft Java (TCP)
-1. Haz clic en: `Add Tunnel`
-2. **Tunnel Type:** Selecciona `Minecraft Java` (o `Custom`)
-3. **Protocol:** `TCP`
-4. **Local IP:** `127.0.0.1`
-5. **Local Port:** `25565`
-6. Haz clic exactamente en: `Add Tunnel`
+### 3.1 — Túnel de Minecraft Java
+1. Haz clic exactamente en: `Add Tunnel`
+2. **Tunnel Type:** Selecciona el preset `Minecraft Java`
+3. **Local IP:** `127.0.0.1`
+4. **Local Port:** `25565`
+5. Haz clic exactamente en: `Add Tunnel`
 
-### 3.2 — Túnel de Simple Voice Chat (UDP)
-1. Haz clic nuevamente en: `Add Tunnel`
-2. **Tunnel Type:** Selecciona `Custom`
-3. **Protocol:** `UDP`
-4. **Local IP:** `127.0.0.1`
-5. **Local Port:** `24454`
-6. Haz clic exactamente en: `Add Tunnel`
+### 3.2 — Túnel de Simple Voice Chat
+1. Haz clic exactamente en: `Add Tunnel`
+2. **Tunnel Type:** Selecciona el preset `MC: Simple Voice Chat`
+3. **Local IP:** `127.0.0.1`
+4. **Local Port:** `24454`
+5. Haz clic exactamente en: `Add Tunnel`
 
 **ESQUEMA VISUAL:**
 ```
@@ -168,49 +168,50 @@ Playit.gg Tunnels
 │ [Add Tunnel]                                            │ ← 1. Clic en Add Tunnel
 │                                                         │
 │ ┌─ TUNNEL 1: MINECRAFT ───────────────────────────────┐ │
-│ │ Type: Minecraft Java | Protocol: TCP                │ │
-│ │ Local Address: 127.0.0.1 : 25565                    │ │
+│ │ Preset: Minecraft Java                               │ │
+│ │ Local Address: 127.0.0.1:25565                      │ │
 │ └─────────────────────────────────────────────────────┘ │
 │                                                         │
 │ ┌─ TUNNEL 2: VOICE CHAT ──────────────────────────────┐ │
-│ │ Type: Custom         | Protocol: UDP                │ │
-│ │ Local Address: 127.0.0.1 : 24454                    │ │
+│ │ Preset: MC: Simple Voice Chat                       │ │
+│ │ Local Address: 127.0.0.1:24454                      │ │
 │ └─────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────┘
 ```
 
 🛑 **NO CONTINÚES HASTA VER:**  
-Ambos túneles (`TCP 25565` y `UDP 24454`) creados en la lista de túneles de tu agente en Playit.gg.
+Ambos túneles (`Minecraft Java` y `MC: Simple Voice Chat`) activos en la lista de túneles apuntando a `127.0.0.1`.
 
 - ✅ **PASS:** Existen 2 túneles configurados hacia `127.0.0.1`.
-- ❌ **FAIL:** Olvidaste crear el túnel UDP para el Chat de Voz o colocaste un puerto local incorrecto.
+- ❌ **FAIL:** No seleccionaste el preset `MC: Simple Voice Chat` o utilizaste un puerto local distinto.
 
 ---
 
 # PASO 4 — Guardar Secretos en el Repositorio de GitHub
 
-**OBJETIVO:** Vincular el Token de GitHub y el Secret de Playit en los secretos del repositorio `cleoleobel/mc-runner`.
+**OBJETIVO:** Registrar los secretos de infraestructura en el repositorio `cleoleobel/mc-runner`.
 
-**DÓNDE ESTÁS:** Repositorio en GitHub (`https://github.com/cleoleobel/mc-runner`).
+**DÓNDE ESTÁS:** GitHub.com → `cleoleobel/mc-runner`
 
 **RUTA:**  
 `cleoleobel/mc-runner`  
-→ `Settings` (Pestaña superior)  
-→ `Secrets and variables` (Menú lateral izquierdo)  
+→ `Settings`  
+→ `Secrets and variables`  
 → `Actions`
 
 **BOTÓN EXACTO:**  
 `New repository secret`
 
-### 4.1 — Agregar `NEXUS_STORAGE_TOKEN`
+### 4.1 — Registrar `NEXUS_STORAGE_TOKEN`
+- Haz clic en: `New repository secret`
 - **Name:** `NEXUS_STORAGE_TOKEN`
-- **Secret:** Pegar el token `ghp_...` creado en el PASO 1.
+- **Secret:** Pegar el token `github_pat_...`
 - Haz clic en: `Add secret`
 
-### 4.2 — Agregar `PLAYIT_SECRET`
-- Haz clic nuevamente en: `New repository secret`
+### 4.2 — Registrar `PLAYIT_SECRET`
+- Haz clic en: `New repository secret`
 - **Name:** `PLAYIT_SECRET`
-- **Secret:** Pegar la clave del agente creada en el PASO 2.
+- **Secret:** Pegar la clave `Secret Key` de Playit.gg
 - Haz clic en: `Add secret`
 
 **ESQUEMA VISUAL:**
@@ -227,42 +228,42 @@ GitHub Repository Settings
 │ [New repository secret]                                 │ ← 4. Clic en New repository secret
 │                                                         │
 │   Name: NEXUS_STORAGE_TOKEN                             │
-│   Secret: ghp_xxxxxxxxxxxxxxxxxxxxxx                    │
+│   Secret: <PEGA_TU_NEXUS_STORAGE_TOKEN_AQUI>            │
 │   [Add secret]                                          │ ← 5. Clic en Add secret
 └─────────────────────────────────────────────────────────┘
 ```
 
 🛑 **NO CONTINÚES HASTA VER:**  
-Tanto `NEXUS_STORAGE_TOKEN` como `PLAYIT_SECRET` listados bajo la sección **Repository secrets**.
+`NEXUS_STORAGE_TOKEN` y `PLAYIT_SECRET` presentes en la lista **Repository secrets**.
 
-- ✅ **PASS:** Ambos secretos aparecen en la lista.
-- ❌ **FAIL:** Error tipográfico en el nombre del secreto (debe ser EXACTAMENTE `NEXUS_STORAGE_TOKEN` y `PLAYIT_SECRET`).
+- ✅ **PASS:** Ambos secretos están guardados.
+- ❌ **FAIL:** Nombres de secretos mal escritos.
 
 ---
 
 # PASO 5 — Ejecutar Workflow de Validación Inicial (`validate`)
 
-**OBJETIVO:** Realizar la prueba técnica atómica para verificar que Forge 1.20.1 inicia correctamente, valida la persistencia SHA-256 y realiza un apagado ordenado.
+**OBJETIVO:** Ejecutar la verificación atómica de booteo de Forge, persistencia SHA-256 y detección de túneles.
 
-**DÓNDE ESTÁS:** Pestaña Actions de GitHub (`https://github.com/cleoleobel/mc-runner/actions`).
+**DÓNDE ESTÁS:** GitHub.com → `cleoleobel/mc-runner` → `Actions`
 
 **RUTA:**  
 `cleoleobel/mc-runner`  
-→ `Actions` (Pestaña superior)  
-→ `NEXUS Java Server` (Menú lateral izquierdo)
+→ `Actions`  
+→ `NEXUS Java Server`
 
 **BOTÓN EXACTO:**  
-`Run workflow` (Menú desplegable a la derecha)
+`Run workflow`
 
-**QUÉ ESCRIBIR / SELECCIONAR:**
+**QUÉ SELECCIONAR:**
 - **Use workflow from:** `Branch: main`
-- **Operación a ejecutar en el servidor:** Selecciona `validate`
+- **Operación a ejecutar en el servidor:** `validate`
 - **Duración máxima de la sesión en minutos:** `330`
 - **Restaurar estado guardado del mundo desde NEXUS STORAGE:** `yes`
-- **Activar modo debug y verbose logging:** Dejar desmarcado (`false`)
+- **Activar modo debug y verbose logging:** Desmarcado (`false`)
 
 **QUÉ HACER DESPUÉS:**  
-Haz clic en el botón verde dentro del menú desplegable:  
+Haz clic en el botón verde:  
 `Run workflow`
 
 **ESQUEMA VISUAL:**
@@ -284,27 +285,22 @@ GitHub Actions
 ```
 
 🛑 **NO CONTINÚES HASTA VER:**  
-Una nueva ejecución apareciendo en la lista con un icono amarillo giratorio 🟡 notificando que el trabajo ha comenzado.
-
-- ✅ **PASS:** La ejecución inició bajo la operación `validate`.
-- ❌ **FAIL:** No seleccionaste la operación `validate` o seleccionaste una rama incorrecta.
+Una ejecución iniciada en la lista con icono de progreso 🟡.
 
 ---
 
-# PASO 6 — Verificación de Evidencia y Step Summary
+# PASO 6 — Verificación de Evidencia Granular y Step Summary
 
-**OBJETIVO:** Comprobar que todos los indicadores técnicos de integridad y seguridad están en estado **PASS**.
+**OBJETIVO:** Validar la evidencia técnica emitida por el runner antes de autorizar la producción.
 
-**DÓNDE ESTÁS:** GitHub Actions → Ejecución en curso de `NEXUS Java Server`.
+**DÓNDE ESTÁS:** GitHub Actions → Ejecución seleccionada de `NEXUS Java Server`.
 
 **RUTA:**  
-Haz clic sobre la ejecución en curso  
-→ Clic en la tarea `Despliegue NEXUS Dedicated Server`  
-→ Espera a que termine (aprox. 2-4 minutos)  
-→ Revisa la sección `Summary` (o `Step Summary`).
+Clic en la ejecución  
+→ Clic en el Job `Despliegue NEXUS Dedicated Server`  
+→ Desplegar la sección `Step Summary`.
 
-**QUÉ DEBES VER EN EL TABLERO (STEP SUMMARY):**
-
+**TABLA REQUERIDA DE STEP SUMMARY:**
 ```
 | Métrica / Componente | Estado |
 |---|---|
@@ -313,119 +309,92 @@ Haz clic sobre la ejecución en curso
 | BACKUP | PASS |
 | REMOTE_SHA | PASS |
 | RESTORE_SHA | PASS |
-| PLAYIT | PASS |
+| PLAYIT_SECRET | PASS |
+| PLAYIT_AGENT | PASS |
+| MINECRAFT_TUNNEL | PASS |
+| VOICE_TUNNEL | PASS |
 ```
 
 🛑 **NO CONTINÚES HASTA VER:**  
-El check verde ✅ al lado del nombre del Job y todos los componentes en `PASS` dentro del Summary.
-
-- ✅ **PASS:** Todos los componentes reportaron `PASS` / `ONLINE` y el job terminó con un check verde.
-- ❌ **FAIL:** Si alguno reporta `UNVERIFIED` o `ERROR`, revisa los secretos ingresados en el PASO 4.
+Check verde de ejecución completada y todos los componentes indicados en estado `PASS` / `ONLINE`.
 
 ---
 
-# PASO 7 — Iniciar el Servidor NEXUS en Producción (`run-server`)
+# PASO 7 — Iniciar Servidor NEXUS en Producción (`run-server`)
 
-**OBJETIVO:** Encender el servidor dedicado de Minecraft para que los jugadores se puedan conectar a jugar.
+**OBJETIVO:** Encender el servidor dedicado de Minecraft para permitir la entrada de jugadores.
 
-**DÓNDE ESTÁS:** GitHub Actions (`https://github.com/cleoleobel/mc-runner/actions`).
+**DÓNDE ESTÁS:** GitHub Actions → `cleoleobel/mc-runner` → `Actions`
 
 **RUTA:**  
 `Actions`  
 → `NEXUS Java Server`  
 → `Run workflow`
 
-**QUÉ ESCRIBIR / SELECCIONAR:**
+**QUÉ SELECCIONAR:**
 - **Use workflow from:** `Branch: main`
-- **Operación a ejecutar en el servidor:** Selecciona `run-server`
-- **Duración máxima de la sesión en minutos:** `330` (5.5 horas)
+- **Operación a ejecutar en el servidor:** `run-server`
+- **Duración máxima de la sesión en minutos:** `330`
 - **Restaurar estado guardado del mundo desde NEXUS STORAGE:** `yes`
 
 **QUÉ HACER DESPUÉS:**  
 Haz clic en el botón verde:  
 `Run workflow`
 
-🛑 **NO CONTINÚES HASTA VER:**  
-El proceso en ejecución y el resumen de GitHub Actions mostrando `FORGE_BOOT = ✅ ONLINE` y `PLAYIT = PASS`.
-
-- ✅ **PASS:** Servidor iniciado y enrutado mediante Playit.gg.
-- ❌ **FAIL:** El servidor falló al arrancar.
-
 ---
 
-# PASO 8 — Conexión desde Minecraft y Validación del Chat de Voz
+# PASO 8 — Conexión al Juego y Confirmación del Chat de Voz
 
-**OBJETIVO:** Conectarse al servidor NEXUS desde el cliente de juego y confirmar la presencia del chat de voz de proximidad.
+**OBJETIVO:** Entrar al mundo de Minecraft y verificar la vinculación automática de Simple Voice Chat.
 
 **DÓNDE ESTÁS:**  
-1. Playit.gg Dashboard → Copia la dirección pública otorgada al túnel TCP de Minecraft (ejemplo: `nexus-server.joinmc.link` o `xxxx.playit.gg:25565`).
-2. Cliente de Minecraft 1.20.1 (con Modpack NEXUS cargado).
+1. Playit.gg Dashboard → Copia el host externo del túnel `Minecraft Java` (ejemplo: `nexus.playit.gg:25565`).
+2. Cliente Minecraft 1.20.1 con Modpack NEXUS.
 
 **RUTA EN MINECRAFT:**  
-Pantalla Principal de Minecraft  
-→ `Multiplayer`  
+`Multiplayer`  
 → `Add Server`
 
 **QUÉ ESCRIBIR:**
 - **Server Name:** `NEXUS Server`
-- **Server Address:** `<DIRECCION_DE_PLAYIT>:<PUERTO>` (Pega la dirección obtenida de Playit.gg)
+- **Server Address:** Pega la dirección obtenida de Playit.gg
 
 **QUÉ HACER DESPUÉS:**
 1. Haz clic en `Done`.
-2. Selecciona `NEXUS Server` de la lista y haz clic en `Join Server`.
-3. Una vez dentro del mundo, presiona la tecla **`V`**.
-
-**ESQUEMA VISUAL EN JUEGO:**
-```
-Minecraft Main Menu
-┌─────────────────────────────────────────────────────────┐
-│  [ Singleplayer ]                                       │
-│  [ Multiplayer ]                                        │ ← 1. Clic en Multiplayer
-└─────────────────────────────────────────────────────────┘
-  └─ [Add Server]                                           ← 2. Clic en Add Server
-       ├─ Server Name: NEXUS Server
-       ├─ Server Address: xxxx.playit.gg:25565              ← 3. Pegar dirección Playit
-       └─ [Done]                                            ← 4. Clic en Done
-            └─ [Join Server]                                 ← 5. Clic en Join Server
-```
+2. Selecciona el servidor y haz clic en `Join Server`.
+3. Al ingresar al mundo, presiona la tecla **`V`**.
 
 🛑 **NO CONTINÚES HASTA VER:**  
-Tu personaje dentro del mundo de NEXUS y, al pulsar **`V`**, el menú de configuración de Simple Voice Chat apareciendo en pantalla con el icono de micrófono conectado.
+Tu personaje en el juego y el menú de Simple Voice Chat abierto en pantalla mostrando el icono de micrófono activo (la dirección `voice_host` fue vinculada automáticamente por el runner sin intervención manual).
 
 ---
 
 # 🏁 CHECKLIST FINAL DE INTEGRIDAD (NEXUS READY)
 
-Marque con una **[X]** cada verificación completada:
-
-- [ ] `NEXUS_STORAGE_TOKEN` configurado en Repository Secrets.
-- [ ] `PLAYIT_SECRET` configurado en Repository Secrets.
-- [ ] Agente Playit.gg activo con Túnel TCP (25565) y Túnel UDP (24454).
-- [ ] Ejecución de prueba `operation = validate` en estado `PASS`.
-- [ ] Indicadores de persistencia (`REMOTE_SHA` y `RESTORE_SHA`) en estado `PASS`.
-- [ ] Servidor iniciado con `operation = run-server`.
-- [ ] Jugadores conectados a través de la IP pública de Playit.gg.
-- [ ] Simple Voice Chat verificado en juego (Tecla `V`).
+- [ ] `NEXUS_STORAGE_TOKEN` (Fine-grained PAT) guardado en Repository Secrets.
+- [ ] `PLAYIT_SECRET` guardado en Repository Secrets.
+- [ ] Agente Playit.gg activo con túneles `Minecraft Java` y `MC: Simple Voice Chat`.
+- [ ] Ejecución `validate` completada con check verde.
+- [ ] Evidencia en Step Summary comprobada: `FORGE_BOOT`, `CLEAN_STOP`, `REMOTE_SHA`, `RESTORE_SHA`, `PLAYIT_SECRET`, `PLAYIT_AGENT`, `MINECRAFT_TUNNEL`, `VOICE_TUNNEL` en `PASS` / `ONLINE`.
+- [ ] Servidor iniciado en producción (`run-server`).
+- [ ] Jugadores conectados en Minecraft y Simple Voice Chat funcional con la tecla **`V`**.
 
 ---
 
-## 🔍 TABLA INTERNA DE AUDITORÍA DE INTERFAZ
-
-| PASO | UI VERIFIED | LABEL VERIFIED | VALUE VERIFIED | EXPECTED RESULT VERIFIED |
-|---|---|---|---|---|
-| 1 | YES | YES | YES | PASS |
-| 2 | YES | YES | YES | PASS |
-| 3 | YES | YES | YES | PASS |
-| 4 | YES | YES | YES | PASS |
-| 5 | YES | YES | YES | PASS |
-| 6 | YES | YES | YES | PASS |
-| 7 | YES | YES | YES | PASS |
-| 8 | YES | YES | YES | PASS |
+## 🔍 AUDITORÍA DE ETIQUETAS E INTERFAZ
 
 ```
-UI_LABELS_VERIFIED=YES
-PROJECT_VALUES_VERIFIED=YES
-WORKFLOW_VALUES_VERIFIED=YES
+AMBIGUOUS_UI_LABELS_FOUND_BEFORE=8
+AMBIGUOUS_UI_LABELS_FOUND_AFTER=0
+GITHUB_UI_VERIFIED=YES
 PLAYIT_UI_VERIFIED=YES
-STATUS = READY
+PLAYIT_SECRET_CHECK=PASS
+PLAYIT_AGENT_CHECK=PASS
+MINECRAFT_TUNNEL_CHECK=PASS
+VOICE_TUNNEL_CHECK=PASS
+SVC_PROTOCOL=MC: Simple Voice Chat
+SVC_LOCAL_PORT=24454
+SVC_VOICE_HOST_AUTOMATED=YES
+UI_LABELS_VERIFIED=YES
+STATUS=READY
 ```

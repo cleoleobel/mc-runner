@@ -156,10 +156,10 @@ jobs:
           echo "| BACKUP | $(get_status backup) |" >> $GITHUB_STEP_SUMMARY
           echo "| REMOTE_SHA | $(get_status upload_sha) |" >> $GITHUB_STEP_SUMMARY
           echo "| RESTORE_SHA | $(get_status restore_sha) |" >> $GITHUB_STEP_SUMMARY
-          
-          PLAYIT_STATUS="NOT_CONFIGURED"
-          [ -n "${PLAYIT_SECRET:-}" ] && PLAYIT_STATUS="PASS"
-          echo "| PLAYIT | $PLAYIT_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| PLAYIT_SECRET | $(get_status playit_secret) |" >> $GITHUB_STEP_SUMMARY
+          echo "| PLAYIT_AGENT | $(get_status playit_agent) |" >> $GITHUB_STEP_SUMMARY
+          echo "| MINECRAFT_TUNNEL | $(get_status minecraft_tunnel) |" >> $GITHUB_STEP_SUMMARY
+          echo "| VOICE_TUNNEL | $(get_status voice_tunnel) |" >> $GITHUB_STEP_SUMMARY
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📊 Recursos del Runner" >> $GITHUB_STEP_SUMMARY
