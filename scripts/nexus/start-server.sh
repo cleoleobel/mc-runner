@@ -40,12 +40,11 @@ echo "[JVM] Configurando Heap dinámico: -Xms$XMS -Xmx$XMX"
 cat << EOF > user_jvm_args.txt
 -Xms${XMS}
 -Xmx${XMX}
--XX:+UseG1GC
+-XX:+UseZGC
+-XX:+ZProactive
 -XX:+UnlockExperimentalVMOptions
--XX:G1NewSizePercent=20
--XX:G1ReservePercent=20
--XX:MaxGCPauseMillis=50
--XX:G1HeapRegionSize=32M
+-XX:+AlwaysPreTouch
+-XX:+DisableExplicitGC
 EOF
 
 # 2. Aceptar EULA
@@ -68,12 +67,23 @@ if [ -f "server.properties" ]; then
     sed -i 's/^view-distance=.*/view-distance=7/' server.properties
     sed -i 's/^simulation-distance=.*/simulation-distance=5/' server.properties
     sed -i 's/^entity-broadcast-range-percentage=.*/entity-broadcast-range-percentage=50/' server.properties
+    sed -i 's/^network-compression-threshold=.*/network-compression-threshold=512/' server.properties
 fi
 
-# 4.6. Inyección Dinámica de Optimización Extrema (Radium)
-if [ ! -f "mods/radium.jar" ] && [ -d "mods" ]; then
-    echo "[OPTIMIZER] Inyectando Radium Reforged en el núcleo del servidor..."
-    curl -sL "https://cdn.modrinth.com/data/2gvRmQXx/versions/n947JjJH/radium-mc1.20.1-0.12.4%2Bgit.26c9d8e.jar" -o mods/radium.jar
+# 4.6. Inyección Dinámica de Optimización Extrema (Radium, FerriteCore, ModernFix)
+if [ -d "mods" ]; then
+    if [ ! -f "mods/radium.jar" ]; then
+        echo "[OPTIMIZER] Inyectando Radium Reforged..."
+        curl -sL "https://cdn.modrinth.com/data/2gvRmQXx/versions/n947JjJH/radium-mc1.20.1-0.12.4%2Bgit.26c9d8e.jar" -o mods/radium.jar
+    fi
+    if [ ! -f "mods/ferritecore-6.0.1-forge.jar" ]; then
+        echo "[OPTIMIZER] Inyectando FerriteCore..."
+        curl -sL "https://cdn.modrinth.com/data/uXXizFIs/versions/DG5Fn9Sz/ferritecore-6.0.1-forge.jar" -o mods/ferritecore-6.0.1-forge.jar
+    fi
+    if [ ! -f "mods/modernfix-forge-5.27.66+mc1.20.1.jar" ]; then
+        echo "[OPTIMIZER] Inyectando ModernFix..."
+        curl -sL "https://cdn.modrinth.com/data/nmDcB62a/versions/ZxDvSMHV/modernfix-forge-5.27.66%2Bmc1.20.1.jar" -o mods/modernfix-forge-5.27.66+mc1.20.1.jar
+    fi
 fi
 
 # 5. Arrancar Forge Dedicated Server
