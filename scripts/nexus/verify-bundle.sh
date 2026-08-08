@@ -18,7 +18,9 @@ fi
 cd "$DOWNLOAD_DIR"
 
 if [ -f "checksums.sha256" ]; then
-    echo "[VERIFY] Comprobando suma de verificación SHA-256..."
+    echo "[VERIFY] Limpiando artefactos de Windows y comprobando suma de verificación SHA-256..."
+    sed -i '1s/^\xef\xbb\xbf//' checksums.sha256 2>/dev/null || true
+    sed -i 's/\r//g' checksums.sha256 2>/dev/null || true
     sha256sum -c checksums.sha256
     echo "[VERIFY SUCCESS] El archivo server-bundle.tar.gz es válido y su firma coincide."
 else
