@@ -1,0 +1,21 @@
+{
+  "nexus_weapons.gun.ballistic_pistol.name": "Nexus Ballistic Pistol",
+  "nexus_weapons.gun.ballistic_pistol.desc": "Era III sidearm",
+  "nexus_weapons.gun.heavy_shotgun.name": "Nexus Heavy Shotgun",
+  "nexus_weapons.gun.heavy_shotgun.desc": "Era III heavy hitter",
+  "nexus_weapons.gun.tactical_smg.name": "Nexus Tactical SMG",
+  "nexus_weapons.gun.tactical_smg.desc": "Era IV close quarters",
+  "nexus_weapons.gun.assault_rifle.name": "Nexus Assault Rifle",
+  "nexus_weapons.gun.assault_rifle.desc": "Era IV standard issue",
+  "nexus_weapons.gun.marksman_dmr.name": "Nexus Marksman DMR",
+  "nexus_weapons.gun.marksman_dmr.desc": "Era V precision rifle",
+  "nexus_weapons.gun.anti_colossus_sniper.name": "Nexus Anti-Colossus Sniper",
+  "nexus_weapons.gun.anti_colossus_sniper.desc": "Era V armor piercing",
+  "nexus_weapons.gun.plasma_lmg.name": "Nexus Plasma LMG",
+  "nexus_weapons.gun.plasma_lmg.desc": "Era V/VI heavy support",
+  "nexus_weapons.gun.technomantic_launcher.name": "Nexus Technomantic Launcher",
+  "nexus_weapons.gun.technomantic_launcher.desc": "Era VI/VII heavy ordnance",
+  "nexus_weapons.ammo.standard_ammo.name": "Nexus Standard Ammo",
+  "nexus_weapons.ammo.heavy_ammo.name": "Nexus Heavy Ammo",
+  "nexus_weapons.ammo.anti_colossus_ammo.name": "Nexus Anti-Colossus Ammo"
+}

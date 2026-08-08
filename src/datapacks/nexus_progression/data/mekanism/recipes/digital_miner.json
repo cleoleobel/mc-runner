@@ -1,0 +1,34 @@
+{
+    "key":  {
+                "R":  {
+                          "item":  "mekanism:robit"
+                      },
+                "X":  {
+                          "item":  "mekanism:steel_casing"
+                      },
+                "A":  {
+                          "tag":  "mekanism:alloys/atomic"
+                      },
+                "T":  {
+                          "item":  "mekanism:teleportation_core"
+                      },
+                "N":  {
+                          "item":  "nexus:containment_rune"
+                      },
+                "C":  {
+                          "tag":  "forge:circuits/elite"
+                      },
+                "S":  {
+                          "item":  "mekanism:logistical_sorter"
+                      }
+            },
+    "pattern":  [
+                    "ACA",
+                    "SRS",
+                    "TXN"
+                ],
+    "result":  {
+                   "item":  "mekanism:digital_miner"
+               },
+    "type":  "minecraft:crafting_shaped"
+}

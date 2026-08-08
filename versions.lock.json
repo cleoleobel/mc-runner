@@ -1,0 +1,24 @@
+﻿{
+  "version": "1.0.0",
+  "last_updated": "2026-08-06 19:46:15",
+  "java_version": "17.0.10+7",
+  "gradle_version": "8.5",
+  "forge_version": "1.20.1-47.4.0",
+  "artifacts": {
+    "nexus_core_jar": {
+      "file": "dist/NEXUS_SERVER_READY/mods/nexus-core-1.0.0.jar",
+      "sha256": "9EFB41CD7081D1BFB6DD1BB085E01B6CDD32B0B29299DCABB546D9A571A8169C",
+      "size_bytes": 21875
+    },
+    "nexus_weapons_zip": {
+      "file": "dist/nexus_weapons.zip",
+      "sha256": "1C93B52B9C4BD99AD8633D6A8A71EE3BCC1060CD0D715F2EEB8DC45813390C6A",
+      "size_bytes": 10084
+    }
+  },
+  "mod_count": {
+    "local_total": 37,
+    "server_total": 30,
+    "client_only_stripped": 7
+  }
+}

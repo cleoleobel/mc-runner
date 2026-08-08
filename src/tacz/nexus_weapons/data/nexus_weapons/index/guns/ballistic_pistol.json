@@ -1,0 +1,8 @@
+{
+  "name": "nexus_weapons.gun.ballistic_pistol.name",
+  "display": "tacz:glock_17_display",
+  "data": "nexus_weapons:ballistic_pistol_data",
+  "tooltip": "nexus_weapons.gun.ballistic_pistol.desc",
+  "type": "pistol",
+  "sort": 1
+}

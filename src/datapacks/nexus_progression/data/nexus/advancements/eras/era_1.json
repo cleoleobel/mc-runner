@@ -1,0 +1,33 @@
+﻿{
+    "display":  {
+                    "icon":  {
+                                 "item":  "minecraft:crafting_table"
+                             },
+                    "title":  "ERA I - Survival",
+                    "description":  "Reach the workbench.",
+                    "frame":  "goal",
+                    "show_toast":  true,
+                    "announce_to_chat":  true,
+                    "hidden":  false,
+                    "background":  "minecraft:textures/gui/advancements/backgrounds/stone.png"
+                },
+    "criteria":  {
+                     "obtain":  {
+                                    "trigger":  "minecraft:inventory_changed",
+                                    "conditions":  {
+                                                       "items":  [
+                                                                     {
+                                                                         "items":  [
+                                                                                       "minecraft:crafting_table"
+                                                                                   ]
+                                                                     }
+                                                                 ]
+                                                   }
+                                }
+                 },
+    "requirements":  [
+                         [
+                             "obtain"
+                         ]
+                     ]
+}

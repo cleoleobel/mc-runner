@@ -1,0 +1,25 @@
+﻿{
+    "key":  {
+                "C":  {
+                          "item":  "nexus:arcane_catalyst"
+                      },
+                "W":  {
+                          "item":  "cataclysm:witherite_ingot"
+                      },
+                "U":  {
+                          "item":  "mekanism:ultimate_control_circuit"
+                      },
+                "N":  {
+                          "tag":  "forge:nether_stars"
+                      }
+            },
+    "pattern":  [
+                    "WCW",
+                    "UNU",
+                    "WCW"
+                ],
+    "result":  {
+                   "item":  "nexus:technomantic_crystal"
+               },
+    "type":  "minecraft:crafting_shaped"
+}

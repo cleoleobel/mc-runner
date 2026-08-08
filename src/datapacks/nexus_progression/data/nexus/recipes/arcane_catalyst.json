@@ -1,0 +1,25 @@
+﻿{
+    "key":  {
+                "G":  {
+                          "tag":  "forge:ingots/gold"
+                      },
+                "E":  {
+                          "item":  "irons_spellbooks:arcane_essence"
+                      },
+                "S":  {
+                          "item":  "alexscaves:pewen_sap"
+                      },
+                "M":  {
+                          "item":  "create:precision_mechanism"
+                      }
+            },
+    "pattern":  [
+                    "EGE",
+                    "SMS",
+                    "EGE"
+                ],
+    "result":  {
+                   "item":  "nexus:arcane_catalyst"
+               },
+    "type":  "minecraft:crafting_shaped"
+}

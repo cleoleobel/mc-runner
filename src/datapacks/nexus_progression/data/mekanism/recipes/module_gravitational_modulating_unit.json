@@ -1,0 +1,31 @@
+{
+    "key":  {
+                "#":  {
+                          "tag":  "forge:nether_stars"
+                      },
+                "A":  {
+                          "tag":  "mekanism:alloys/atomic"
+                      },
+                "T":  {
+                          "item":  "nexus:technomantic_crystal"
+                      },
+                "H":  {
+                          "item":  "mekanism:pellet_antimatter"
+                      },
+                "E":  {
+                          "item":  "mekanism:ultimate_induction_provider"
+                      },
+                "P":  {
+                          "item":  "mekanism:module_base"
+                      }
+            },
+    "pattern":  [
+                    "A#A",
+                    "EPE",
+                    "HTH"
+                ],
+    "result":  {
+                   "item":  "mekanism:module_gravitational_modulating_unit"
+               },
+    "type":  "minecraft:crafting_shaped"
+}

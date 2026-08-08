@@ -1,0 +1,33 @@
+﻿{
+    "display":  {
+                    "icon":  {
+                                 "item":  "nexus:arcane_catalyst"
+                             },
+                    "title":  "ERA IV - Chemistry",
+                    "description":  "The Arcane Catalyst unlocks chemistry.",
+                    "frame":  "goal",
+                    "show_toast":  true,
+                    "announce_to_chat":  true,
+                    "hidden":  false
+                },
+    "criteria":  {
+                     "obtain":  {
+                                    "trigger":  "minecraft:inventory_changed",
+                                    "conditions":  {
+                                                       "items":  [
+                                                                     {
+                                                                         "items":  [
+                                                                                       "nexus:arcane_catalyst"
+                                                                                   ]
+                                                                     }
+                                                                 ]
+                                                   }
+                                }
+                 },
+    "requirements":  [
+                         [
+                             "obtain"
+                         ]
+                     ],
+    "parent":  "nexus:eras/era_3"
+}

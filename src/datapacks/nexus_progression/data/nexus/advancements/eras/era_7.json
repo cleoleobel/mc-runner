@@ -1,0 +1,33 @@
+﻿{
+    "display":  {
+                    "icon":  {
+                                 "item":  "nexus:technomantic_crystal"
+                             },
+                    "title":  "ERA VII - Arcane-Tech",
+                    "description":  "Technomancy grants flight.",
+                    "frame":  "challenge",
+                    "show_toast":  true,
+                    "announce_to_chat":  true,
+                    "hidden":  false
+                },
+    "criteria":  {
+                     "obtain":  {
+                                    "trigger":  "minecraft:inventory_changed",
+                                    "conditions":  {
+                                                       "items":  [
+                                                                     {
+                                                                         "items":  [
+                                                                                       "mekanism:module_gravitational_modulating_unit"
+                                                                                   ]
+                                                                     }
+                                                                 ]
+                                                   }
+                                }
+                 },
+    "requirements":  [
+                         [
+                             "obtain"
+                         ]
+                     ],
+    "parent":  "nexus:eras/era_6"
+}

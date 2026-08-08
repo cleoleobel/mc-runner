@@ -1,0 +1,23 @@
+﻿{
+    "key":  {
+                "P":  {
+                          "item":  "create:iron_sheet"
+                      },
+                "I":  {
+                          "tag":  "forge:ingots/iron"
+                      },
+                "A":  {
+                          "item":  "create:andesite_alloy"
+                      }
+            },
+    "pattern":  [
+                    "PPP",
+                    "AIA",
+                    "PPP"
+                ],
+    "result":  {
+                   "count":  4,
+                   "item":  "nexus:ballistic_steel"
+               },
+    "type":  "minecraft:crafting_shaped"
+}

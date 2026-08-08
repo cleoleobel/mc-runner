@@ -1,0 +1,28 @@
+﻿{
+    "key":  {
+                "G":  {
+                          "tag":  "forge:glass/silica"
+                      },
+                "S":  {
+                          "tag":  "forge:ingots/steel"
+                      },
+                "P":  {
+                          "item":  "create:sturdy_sheet"
+                      },
+                "O":  {
+                          "tag":  "forge:ingots/osmium"
+                      },
+                "N":  {
+                          "item":  "alexscaves:scarlet_neodymium_ingot"
+                      }
+            },
+    "pattern":  [
+                    "SPS",
+                    "NOG",
+                    "SGS"
+                ],
+    "result":  {
+                   "item":  "mekanism:steel_casing"
+               },
+    "type":  "minecraft:crafting_shaped"
+}

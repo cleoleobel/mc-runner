@@ -1,0 +1,8 @@
+{
+  "name": "nexus_weapons.gun.heavy_shotgun.name",
+  "display": "tacz:m870_display",
+  "data": "nexus_weapons:heavy_shotgun_data",
+  "tooltip": "nexus_weapons.gun.heavy_shotgun.desc",
+  "type": "shotgun",
+  "sort": 2
+}

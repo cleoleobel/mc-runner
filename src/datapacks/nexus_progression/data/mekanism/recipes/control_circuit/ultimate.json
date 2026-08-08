@@ -1,0 +1,21 @@
+﻿{
+    "key":  {
+                "C":  {
+                          "tag":  "forge:circuits/elite"
+                      },
+                "I":  {
+                          "item":  "cataclysm:ignitium_ingot"
+                      },
+                "A":  {
+                          "tag":  "mekanism:alloys/atomic"
+                      }
+            },
+    "pattern":  [
+                    "ACA",
+                    " I "
+                ],
+    "result":  {
+                   "item":  "mekanism:ultimate_control_circuit"
+               },
+    "type":  "minecraft:crafting_shaped"
+}

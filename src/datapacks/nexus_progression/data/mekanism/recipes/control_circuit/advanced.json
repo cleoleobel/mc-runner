@@ -1,0 +1,21 @@
+﻿{
+    "key":  {
+                "C":  {
+                          "tag":  "forge:circuits/basic"
+                      },
+                "K":  {
+                          "item":  "nexus:arcane_catalyst"
+                      },
+                "A":  {
+                          "tag":  "mekanism:alloys/infused"
+                      }
+            },
+    "pattern":  [
+                    "ACA",
+                    " K "
+                ],
+    "result":  {
+                   "item":  "mekanism:advanced_control_circuit"
+               },
+    "type":  "minecraft:crafting_shaped"
+}
