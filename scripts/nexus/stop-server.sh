@@ -52,10 +52,10 @@ fi
 
 # 2. Detener Playit Agent
 if [ -f "$PLAYIT_PID_FILE" ]; then
-    PPID=$(cat "$PLAYIT_PID_FILE")
-    if kill -0 "$PPID" 2>/dev/null; then
-        echo "[SHUTDOWN] Deteniendo agente Playit (PID: $PPID)..."
-        kill "$PPID" 2>/dev/null || true
+    PLAYIT_PID=$(cat "$PLAYIT_PID_FILE")
+    if kill -0 "$PLAYIT_PID" 2>/dev/null; then
+        echo "[SHUTDOWN] Deteniendo agente Playit (PID: $PLAYIT_PID)..."
+        kill "$PLAYIT_PID" 2>/dev/null || true
     fi
     rm -f "$PLAYIT_PID_FILE"
 fi
