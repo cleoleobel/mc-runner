@@ -77,10 +77,10 @@ if [ ! -f "$PLAYIT_BIN" ]; then
     ARCH=$(uname -m)
     case "$ARCH" in
         x86_64)
-            DOWNLOAD_URL="https://github.com/playit-cloud/playit-agent/releases/latest/download/playit-linux-amd64"
+            DOWNLOAD_URL="https://github.com/playit-cloud/playit-agent/releases/download/v0.15.26/playit-linux-amd64"
             ;;
         aarch64|arm64)
-            DOWNLOAD_URL="https://github.com/playit-cloud/playit-agent/releases/latest/download/playit-linux-arm64"
+            DOWNLOAD_URL="https://github.com/playit-cloud/playit-agent/releases/download/v0.15.26/playit-linux-arm64"
             ;;
         *)
             echo "[PLAYIT ERROR] Arquitectura no soportada: $ARCH"
@@ -101,7 +101,7 @@ fi
 # 3. Arrancar agente con sanitización de secrets
 echo "[PLAYIT] Iniciando daemon de Playit..."
 
-("$PLAYIT_BIN" --secret "$PLAYIT_SECRET" --socket-path /tmp/playit.sock 2>&1 | sed -u "s/$PLAYIT_SECRET/[REDACTED]/g" > "$PLAYIT_LOG") &
+("$PLAYIT_BIN" --secret "$PLAYIT_SECRET" start 2>&1 | sed -u "s/$PLAYIT_SECRET/[REDACTED]/g" > "$PLAYIT_LOG") &
 PLAYIT_PID=$!
 echo "$PLAYIT_PID" > "$LOG_DIR/playit.pid"
 
