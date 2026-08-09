@@ -1,1 +1,6 @@
 # nada que ignorar: aqui solo va el workflow
+
+# Gradle/Forge generated output (some historical files are already tracked;
+# this prevents new cache and build products from entering future commits).
+src/nexus-core/.gradle/
+src/nexus-core/build/

@@ -16,9 +16,11 @@ echo "   Storage Repo: $STORAGE_REPO"
 echo "=================================================="
 
 # 1. Configurar token para GitHub CLI si está provisto
-if [ -n "${NEXUS_STORAGE_TOKEN:-}" ]; then
-    echo "$NEXUS_STORAGE_TOKEN" | gh auth login --with-token 2>/dev/null || true
+if [ -z "${NEXUS_STORAGE_TOKEN:-}" ]; then
+    echo "[DOWNLOAD ERROR] NEXUS_STORAGE_TOKEN is required."
+    exit 1
 fi
+export GH_TOKEN="$NEXUS_STORAGE_TOKEN"
 
 # 2. Descargar assets de la release 'server-bundle-latest'
 echo "[DOWNLOAD] Obteniendo release 'server-bundle-latest'..."
@@ -27,7 +29,11 @@ cd "$DOWNLOAD_DIR"
 rm -f server-bundle.tar.gz manifest.json checksums.sha256
 
 if command -v gh >/dev/null 2>&1; then
-    gh release download server-bundle-latest --repo "$STORAGE_REPO" --pattern "*" --clobber
+    gh release download server-bundle-latest --repo "$STORAGE_REPO" \
+        --pattern "server-bundle.tar.gz" \
+        --pattern "manifest.json" \
+        --pattern "checksums.sha256" \
+        --clobber
 else
     echo "[DOWNLOAD ERROR] GitHub CLI (gh) no está disponible."
     exit 1

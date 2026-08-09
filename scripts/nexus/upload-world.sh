@@ -18,15 +18,23 @@ echo "   SUBIENDO RESPALDO DEL MUNDO A NEXUS STORAGE"
 echo "   Storage Repo: $STORAGE_REPO"
 echo "=================================================="
 
+if [ "$(cat session_diagnostics/status_backup.txt 2>/dev/null || true)" != "PASS" ]; then
+    echo "[UPLOAD SKIPPED] Local backup status is not PASS; current-manifest.json remains unchanged."
+    echo "SKIPPED_NO_BACKUP" > session_diagnostics/status_upload_sha.txt
+    exit 0
+fi
+
 if [ ! -f "$TEMP_BACKUP" ]; then
     echo "[UPLOAD ERROR] No existe el respaldo verificado $TEMP_BACKUP"
     exit 1
 fi
 
 # 1. Autenticar en GitHub CLI
-if [ -n "${NEXUS_STORAGE_TOKEN:-}" ]; then
-    echo "$NEXUS_STORAGE_TOKEN" | gh auth login --with-token 2>/dev/null
+if [ -z "${NEXUS_STORAGE_TOKEN:-}" ]; then
+    echo "[UPLOAD ERROR] NEXUS_STORAGE_TOKEN is required."
+    exit 1
 fi
+export GH_TOKEN="$NEXUS_STORAGE_TOKEN"
 
 # 2. Asegurar que exista la release 'world-state'
 echo "[UPLOAD] Verificando release 'world-state' en $STORAGE_REPO..."
@@ -42,8 +50,18 @@ if [ ! -f "$INFO_FILE" ]; then
     exit 1
 fi
 
-HISTORICAL_NAME=$(grep '"asset"' "$INFO_FILE" | cut -d '"' -f 4)
-LOCAL_SHA256=$(grep '"sha256"' "$INFO_FILE" | cut -d '"' -f 4)
+if ! command -v jq >/dev/null 2>&1 || ! jq -e '(.asset | type == "string") and (.sha256 | type == "string")' "$INFO_FILE" >/dev/null; then
+    echo "[UPLOAD ERROR] $INFO_FILE is not a valid backup manifest."
+    exit 1
+fi
+HISTORICAL_NAME=$(jq -r '.asset' "$INFO_FILE")
+LOCAL_SHA256=$(jq -r '.sha256 | ascii_downcase' "$INFO_FILE")
+
+if [[ ! "$HISTORICAL_NAME" =~ ^world-run-[A-Za-z0-9._-]+-[a-fA-F0-9]{64}\.tar\.gz$ ]] \
+    || [[ ! "$LOCAL_SHA256" =~ ^[a-f0-9]{64}$ ]]; then
+    echo "[UPLOAD ERROR] Backup manifest contains an unsafe asset name or SHA-256."
+    exit 1
+fi
 HISTORICAL_FILE="$BACKUP_DIR/$HISTORICAL_NAME"
 
 if [ ! -f "$HISTORICAL_FILE" ]; then

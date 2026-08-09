@@ -2,8 +2,8 @@ plugins {
     id 'eclipse'
     id 'idea'
     id 'maven-publish'
-    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
-    id 'org.spongepowered.mixin' version '0.7.+'
+    id 'net.minecraftforge.gradle' version '6.0.54'
+    id 'org.spongepowered.mixin' version '0.7.38'
 }
 
 version = '1.0.0'
@@ -41,11 +41,23 @@ minecraft {
     }
 }
 
-sourceSets.main.resources { srcDir 'src/generated/resources' }
+sourceSets.main.resources {
+    srcDir 'src/generated/resources'
+}
+
+// Also embed the canonical data files in nexus-core. The launcher installs the
+// same source as a world datapack, which gives compatibility overrides priority
+// over the broken resources shipped by third-party mods.
+processResources {
+    from('../datapacks/nexus_progression/data') { into 'data' }
+}
 
 repositories {
     mavenCentral()
-    maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
+    maven {
+        url = 'https://repo.spongepowered.org/repository/maven-public/'
+        content { includeGroupByRegex 'org\\.spongepowered(\\..*)?' }
+    }
 }
 
 dependencies {
@@ -59,6 +71,8 @@ mixin {
 }
 
 jar {
+    finalizedBy 'reobfJar'
+
     manifest {
         attributes([
                 "Specification-Title"     : "nexus",

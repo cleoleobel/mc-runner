@@ -5,7 +5,7 @@
 
 [CmdletBinding()]
 param(
-    [string]$Version = "2026.08.07-01",
+    [string]$Version = "2026.08.08-01",
     [string]$OutputDir = "dist/github",
     [switch]$DryRun = $false
 )
@@ -23,17 +23,24 @@ $StagingDir = Join-Path $WorkspaceRoot "dist/staging_server"
 $FinalOutputDir = Join-Path $WorkspaceRoot $OutputDir
 
 # Buscar fuente principal de mods: Instancia activa local primero, fallback a dist/NEXUS_SERVER_READY
-$ClientInstanceMods = "C:\Users\PC\AppData\Roaming\.minecraft\instances\f094d86375724af2bd72f8fffd725379\mods"
+$ClientInstanceMods = if ($env:NEXUS_CLIENT_MODS_DIR) {
+    $env:NEXUS_CLIENT_MODS_DIR
+} else {
+    Join-Path $env:APPDATA ".minecraft\mods"
+}
 $ServerReadyDir = Join-Path $WorkspaceRoot "dist/NEXUS_SERVER_READY"
 $WorkServerDir = Join-Path (Split-Path $WorkspaceRoot -Parent) "server"
 
 $ModSourceDir = $null
 if (Test-Path $ClientInstanceMods) {
     $ModSourceDir = $ClientInstanceMods
-    Write-Host "[MOD SOURCE] Usando instancia cliente local activa: $ModSourceDir" -ForegroundColor Green
+    Write-Host "[MOD SOURCE] Usando la instancia cliente validada: $ModSourceDir" -ForegroundColor Green
 } elseif (Test-Path (Join-Path $ServerReadyDir "mods")) {
     $ModSourceDir = Join-Path $ServerReadyDir "mods"
-    Write-Host "[MOD SOURCE] Usando NEXUS_SERVER_READY: $ModSourceDir" -ForegroundColor Yellow
+    Write-Host "[MOD SOURCE WARN] Fallback a NEXUS_SERVER_READY: $ModSourceDir" -ForegroundColor Yellow
+} elseif (Test-Path (Join-Path $WorkServerDir "mods")) {
+    $ModSourceDir = Join-Path $WorkServerDir "mods"
+    Write-Host "[MOD SOURCE WARN] Fallback al servidor local: $ModSourceDir" -ForegroundColor Yellow
 } else {
     throw "ERROR CRITICO: No se encontró fuente de mods válida."
 }
@@ -51,6 +58,15 @@ $SourceMods = Get-ChildItem -Path $ModSourceDir -Filter "*.jar"
 $IncludedCount = 0
 $ExcludedCount = 0
 
+# This pair is the compatibility baseline validated with Cataclysm Spellbooks 1.2.9.
+# Abort instead of silently publishing the incompatible 3.31/3.0 server pair.
+if (-not ($SourceMods.Name -match '^L_Enders_Cataclysm-3\.16\.jar$')) {
+    throw "ERROR DE COMPATIBILIDAD: Falta L_Enders_Cataclysm-3.16.jar en $ModSourceDir"
+}
+if (-not ($SourceMods.Name -match '^lionfishapi-2\.8\.jar$')) {
+    throw "ERROR DE COMPATIBILIDAD: Falta lionfishapi-2.8.jar en $ModSourceDir"
+}
+
 foreach ($mod in $SourceMods) {
     # Validar exclusiones prohibidas (IronsArms / ArmsLib)
     if ($mod.Name -match "IronsArms" -or $mod.Name -match "ArmsLib") {
@@ -63,15 +79,16 @@ foreach ($mod in $SourceMods) {
         $mod.Name -match "DistantHorizons" -or $mod.Name -match "xaero" -or `
         $mod.Name -match "Controlling" -or $mod.Name -match "vanillin" -or `
         $mod.Name -match "sodiumoptionsapi" -or $mod.Name -match "CullLessLeaves" -or `
-        $mod.Name -match "gpumemleakfix" -or $mod.Name -match "Searchables") {
-        Write-Host "  [OMITIDO CLIENT-ONLY] $($mod.Name)" -ForegroundColor DarkGray
+        $mod.Name -match "gpumemleakfix" -or $mod.Name -match "Searchables" -or `
+        $mod.Name -match "alltheleaks" -or $mod.Name -match "recipeessentials") {
+        Write-Host "  [OMITIDO CLIENT-ONLY/CONFLICTO] $($mod.Name)" -ForegroundColor DarkGray
         $ExcludedCount++
         continue
     }
 
-    # Validar version de Cataclysm (asegurar v3.16 sobre v3.31 si existe)
-    if ($mod.Name -match "Cataclysm" -and $mod.Name -notmatch "3.16" -and $mod.Name -notmatch "spellbooks") {
-        Write-Host "  [OMITIDO VERSION INCOMPATIBLE] $($mod.Name) (Requiere Cataclysm 3.16)" -ForegroundColor Red
+    if (($mod.Name -match '^L_Enders_Cataclysm-' -and $mod.Name -notmatch '^L_Enders_Cataclysm-3\.16\.jar$') -or `
+        ($mod.Name -match '^lionfishapi-' -and $mod.Name -notmatch '^lionfishapi-2\.8\.jar$')) {
+        Write-Host "  [OMITIDO VERSION INCOMPATIBLE] $($mod.Name)" -ForegroundColor Red
         $ExcludedCount++
         continue
     }
@@ -129,7 +146,7 @@ if (Test-Path $VoiceConfigFile) {
     [System.IO.File]::WriteAllText($VoiceConfigFile, $vContent)
 }
 
-Write-Host "[3/8] Copiando TaCZ Gunpack y Datapacks..." -ForegroundColor Yellow
+Write-Host "[3/8] Copiando TaCZ Gunpack..." -ForegroundColor Yellow
 $TacZStaging = New-Item -ItemType Directory -Force -Path (Join-Path $StagingDir "tacz")
 $GunpackSource = Join-Path $WorkspaceRoot "src/tacz/nexus_weapons"
 if (Test-Path $GunpackSource) {
@@ -138,12 +155,7 @@ if (Test-Path $GunpackSource) {
     Write-Host "  [TACZ] Gunpack nexus_weapons copiado." -ForegroundColor Green
 }
 
-$DatapackSource = Join-Path $WorkspaceRoot "src/datapacks/nexus_progression"
-$WorldDatapackDir = New-Item -ItemType Directory -Force -Path (Join-Path $StagingDir "defaultconfigs/datapacks/nexus_progression")
-if (Test-Path $DatapackSource) {
-    Copy-Item -Path "$DatapackSource/*" -Destination $WorldDatapackDir.FullName -Recurse -Force
-    Write-Host "  [DATAPACK] nexus_progression copiado a defaultconfigs." -ForegroundColor Green
-}
+Write-Host "  [DATAPACK] nexus_progression se empaqueta dentro de nexus-core." -ForegroundColor Green
 
 Write-Host "[4/8] Copiando estructura Forge y Librerias..." -ForegroundColor Yellow
 if (Test-Path $WorkServerDir) {
