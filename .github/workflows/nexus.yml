@@ -45,6 +45,7 @@ env:
   PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
   MINECRAFT_PUBLIC_HOST: ${{ vars.MINECRAFT_PUBLIC_HOST }}
   VOICECHAT_PUBLIC_HOST: ${{ vars.VOICECHAT_PUBLIC_HOST }}
+  NEXUS_ONLINE_MODE: ${{ vars.NEXUS_ONLINE_MODE || 'true' }}
   NEXUS_OPERATION: ${{ inputs.operation || 'run-server' }}
   SESSION_MINUTES: ${{ inputs.session_minutes || '325' }}
   RESTORE_WORLD: ${{ inputs.restore_world || 'yes' }}
