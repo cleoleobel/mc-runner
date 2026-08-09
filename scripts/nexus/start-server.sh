@@ -41,6 +41,11 @@ update_server_property() {
     if grep -q "^${key}=" server.properties; then
         sed -i "s|^${key}=.*|${key}=${value}|" server.properties
     else
+        # A few historical bundles ended server.properties without a final
+        # newline. Ensure an appended key never becomes part of the last value.
+        if [ -s server.properties ] && [ "$(tail -c 1 server.properties | wc -l)" -eq 0 ]; then
+            printf '\n' >> server.properties
+        fi
         printf '%s=%s\n' "$key" "$value" >> server.properties
     fi
 }
