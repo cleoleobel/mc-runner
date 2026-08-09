@@ -14,6 +14,7 @@ readonly FIFO_PATH="server_stdin.fifo"
 
 mkdir -p "$LOG_DIR" "$DIAG_DIR"
 printf '%s\n' "STARTING" > "$DIAG_DIR/status_server.txt"
+printf '%s\n' "UNVERIFIED" > "$DIAG_DIR/status_runtime_errors.txt"
 
 OPERATION="${1:-run-server}"
 SESSION_MINUTES="${SESSION_MINUTES:-325}"
@@ -70,6 +71,29 @@ set_forge_boolean_false() {
         }
     ' "$file" > "$temp_file"
     mv "$temp_file" "$file"
+}
+
+audit_runtime_log() {
+    local error_count=0
+
+    if [ ! -f "$SERVER_LOG" ]; then
+        echo "[LOG AUDIT ERROR] $SERVER_LOG does not exist."
+        printf '%s\n' "FAIL" > "$DIAG_DIR/status_runtime_errors.txt"
+        return 1
+    fi
+
+    error_count="$(grep -Ec '\[[^]]+/ERROR\]' "$SERVER_LOG" || true)"
+    if [ "$error_count" -gt 0 ]; then
+        echo "[LOG AUDIT ERROR] Forge emitted $error_count ERROR entries:"
+        grep -E '\[[^]]+/ERROR\]' "$SERVER_LOG" \
+            | sed -E 's/^\[[^]]+\][[:space:]]*//' \
+            | sort | uniq -c | sort -nr | head -n 50
+        printf '%s\n' "FAIL" > "$DIAG_DIR/status_runtime_errors.txt"
+        return 1
+    fi
+
+    printf '%s\n' "PASS" > "$DIAG_DIR/status_runtime_errors.txt"
+    echo "[LOG AUDIT PASS] Forge emitted no ERROR entries."
 }
 
 echo "=================================================="
@@ -231,6 +255,11 @@ if [ "$HEALTHY" != "true" ]; then
     echo "[HEALTHCHECK WARN] Readiness incomplete during '$OPERATION'."
 fi
 
+if ! audit_runtime_log; then
+    echo "[LOG AUDIT FATAL] Public startup is not clean."
+    exit 1
+fi
+
 if [ "$OPERATION" = "validate" ]; then
     echo "[VALIDATE] Boot validation completed; stopping cleanly."
     bash scripts/nexus/stop-server.sh
@@ -283,5 +312,9 @@ echo "[SESSION] Stopping and syncing before the persistence stage."
 bash scripts/nexus/stop-server.sh
 
 if [ "$SERVER_EXITED" = "true" ]; then
+    exit 1
+fi
+
+if ! audit_runtime_log; then
     exit 1
 fi

@@ -131,6 +131,19 @@ jobs:
           cd src/nexus-core
           chmod +x gradlew
           ./gradlew build
+          for entry in \
+            com/nexus/core/mixin/ArmorStandMixin.class \
+            com/nexus/core/mixin/CataclysmSpellbooksEntityRegistryMixin.class \
+            nexus.mixins.json \
+            nexus.refmap.json \
+            data/irons_spellbooks/loot_tables/chests/catacombs/crypt_loot.json \
+            data/irons_spellbooks/loot_tables/chests/citadel/citadel_tomes.json \
+            data/nexus/recipes/technomantic_crystal.json; do
+            if ! jar tf build/libs/nexus-core-1.0.0.jar | grep -Fxq "$entry"; then
+              echo "::error::nexus-core no contiene el recurso obligatorio $entry"
+              exit 1
+            fi
+          done
           cp build/libs/nexus-core-1.0.0.jar ../../mods/nexus-core-1.0.0.jar
 
       - name: ETAPA 7 - Restaurar Estado Persistente del Mundo
@@ -184,6 +197,7 @@ jobs:
           echo "| VOICE_TUNNEL | $(get_status voice_tunnel) |" >> $GITHUB_STEP_SUMMARY
           echo "| VOICE_UDP_SOCKET | $(get_status voice_udp_socket) |" >> $GITHUB_STEP_SUMMARY
           echo "| SVC_CONFIG | $(get_status svc_config) |" >> $GITHUB_STEP_SUMMARY
+          echo "| RUNTIME_LOG_ERRORS | $(get_status runtime_errors) |" >> $GITHUB_STEP_SUMMARY
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📊 Recursos del Runner" >> $GITHUB_STEP_SUMMARY

@@ -146,7 +146,7 @@ if (Test-Path $VoiceConfigFile) {
     [System.IO.File]::WriteAllText($VoiceConfigFile, $vContent)
 }
 
-Write-Host "[3/8] Copiando TaCZ Gunpack y Datapacks..." -ForegroundColor Yellow
+Write-Host "[3/8] Copiando TaCZ Gunpack..." -ForegroundColor Yellow
 $TacZStaging = New-Item -ItemType Directory -Force -Path (Join-Path $StagingDir "tacz")
 $GunpackSource = Join-Path $WorkspaceRoot "src/tacz/nexus_weapons"
 if (Test-Path $GunpackSource) {
@@ -155,12 +155,7 @@ if (Test-Path $GunpackSource) {
     Write-Host "  [TACZ] Gunpack nexus_weapons copiado." -ForegroundColor Green
 }
 
-$DatapackSource = Join-Path $WorkspaceRoot "src/datapacks/nexus_progression"
-$WorldDatapackDir = New-Item -ItemType Directory -Force -Path (Join-Path $StagingDir "defaultconfigs/datapacks/nexus_progression")
-if (Test-Path $DatapackSource) {
-    Copy-Item -Path "$DatapackSource/*" -Destination $WorldDatapackDir.FullName -Recurse -Force
-    Write-Host "  [DATAPACK] nexus_progression copiado a defaultconfigs." -ForegroundColor Green
-}
+Write-Host "  [DATAPACK] nexus_progression se empaqueta dentro de nexus-core." -ForegroundColor Green
 
 Write-Host "[4/8] Copiando estructura Forge y Librerias..." -ForegroundColor Yellow
 if (Test-Path $WorkServerDir) {
