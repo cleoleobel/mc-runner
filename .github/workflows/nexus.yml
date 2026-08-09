@@ -43,6 +43,7 @@ env:
   STORAGE_REPO: "cleoleobel/nexus-storage"
   NEXUS_STORAGE_TOKEN: ${{ secrets.NEXUS_STORAGE_TOKEN }}
   PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
+  MINECRAFT_PUBLIC_HOST: ${{ vars.MINECRAFT_PUBLIC_HOST }}
   VOICECHAT_PUBLIC_HOST: ${{ vars.VOICECHAT_PUBLIC_HOST }}
   NEXUS_OPERATION: ${{ inputs.operation || 'run-server' }}
   SESSION_MINUTES: ${{ inputs.session_minutes || '325' }}
@@ -74,6 +75,14 @@ jobs:
             else
               echo "::warning::PLAYIT_SECRET no configurado durante $NEXUS_OPERATION."
             fi
+          fi
+          if [ "$NEXUS_OPERATION" = "run-server" ] && [ -z "${MINECRAFT_PUBLIC_HOST:-}" ]; then
+            echo "::error::Falta la variable MINECRAFT_PUBLIC_HOST con el endpoint TCP de Playit."
+            fallo=1
+          fi
+          if [ "$NEXUS_OPERATION" = "run-server" ] && [ -z "${VOICECHAT_PUBLIC_HOST:-}" ]; then
+            echo "::error::Falta la variable VOICECHAT_PUBLIC_HOST con el endpoint UDP de Playit."
+            fallo=1
           fi
           if [ "$fallo" -eq 1 ]; then
             exit 1

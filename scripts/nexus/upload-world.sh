@@ -19,8 +19,9 @@ echo "   Storage Repo: $STORAGE_REPO"
 echo "=================================================="
 
 if [ "$(cat session_diagnostics/status_backup.txt 2>/dev/null || true)" != "PASS" ]; then
-    echo "[UPLOAD ERROR] Local backup status is not PASS; current-manifest.json will not be changed."
-    exit 1
+    echo "[UPLOAD SKIPPED] Local backup status is not PASS; current-manifest.json remains unchanged."
+    echo "SKIPPED_NO_BACKUP" > session_diagnostics/status_upload_sha.txt
+    exit 0
 fi
 
 if [ ! -f "$TEMP_BACKUP" ]; then

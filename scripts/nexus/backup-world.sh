@@ -27,10 +27,10 @@ if [ "${GITHUB_ACTIONS:-false}" = "true" ]; then
     SERVER_STATUS="$(cat "$DIAG_DIR/status_server.txt" 2>/dev/null || true)"
     STOP_STATUS="$(cat "$DIAG_DIR/status_stop.txt" 2>/dev/null || true)"
     if [ "$SERVER_STATUS" != "ONLINE" ] || [ "$STOP_STATUS" != "PASS" ]; then
-        echo "[BACKUP ERROR] Refusing remote promotion after an unhealthy session."
-        echo "[BACKUP ERROR] server=$SERVER_STATUS stop=$STOP_STATUS"
-        printf '%s\n' "FAIL" > "$DIAG_DIR/status_backup.txt"
-        exit 1
+        echo "[BACKUP SKIPPED] No snapshot will be promoted after an unhealthy session."
+        echo "[BACKUP SKIPPED] server=$SERVER_STATUS stop=$STOP_STATUS"
+        printf '%s\n' "SKIPPED_UNHEALTHY" > "$DIAG_DIR/status_backup.txt"
+        exit 0
     fi
 fi
 

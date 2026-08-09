@@ -58,8 +58,9 @@ is_public_endpoint() {
         && [[ ! "$endpoint" =~ ^(localhost|127\.|0\.0\.0\.0|\[?::1\]?) ]]
 }
 
-# SVC must listen on all container/runner interfaces. voice_host is populated only
-# after the matching public UDP tunnel has been observed in the Playit log.
+# SVC must listen on all container/runner interfaces. Playit 0.17.x no longer
+# prints the public-to-local mapping table, so the public endpoints come from
+# repository variables and agent readiness comes from its control-plane log.
 update_property "$VOICE_CONFIG" "port" "24454"
 update_property "$VOICE_CONFIG" "bind_address" "*"
 update_property "$VOICE_CONFIG" "codec" "VOIP"
@@ -72,6 +73,18 @@ if [ -z "${PLAYIT_SECRET:-}" ]; then
     exit 1
 fi
 printf '%s\n' "PASS" > "$DIAG_DIR/status_playit_secret.txt"
+
+if ! is_public_endpoint "${MINECRAFT_PUBLIC_HOST:-}"; then
+    echo "[PLAYIT ERROR] MINECRAFT_PUBLIC_HOST must be a public playit.gg/ply.gg endpoint."
+    printf '%s\n' "FAIL" > "$DIAG_DIR/status_minecraft_tunnel.txt"
+    exit 1
+fi
+if ! is_public_endpoint "${VOICECHAT_PUBLIC_HOST:-}"; then
+    echo "[PLAYIT ERROR] VOICECHAT_PUBLIC_HOST must be a public playit.gg/ply.gg endpoint."
+    printf '%s\n' "FAIL" > "$DIAG_DIR/status_voice_tunnel.txt"
+    printf '%s\n' "FAIL" > "$DIAG_DIR/status_svc_config.txt"
+    exit 1
+fi
 
 case "$(uname -m)" in
     x86_64|amd64)
@@ -138,11 +151,12 @@ sleep 2
 rm -f "$PLAYIT_SECRET_FILE"
 unset PLAYIT_SECRET_FILE
 
-echo "[PLAYIT] Agent started as PID $PLAYIT_PID; waiting for both tunnel mappings..."
+echo "[PLAYIT] Agent started as PID $PLAYIT_PID; waiting for control and UDP readiness..."
 
-MC_ENDPOINT=""
-VOICE_ENDPOINT=""
-for _ in $(seq 1 30); do
+AGENT_REGISTERED=false
+TUNNELS_REGISTERED=false
+UDP_SESSION_READY=false
+for _ in $(seq 1 20); do
     if ! kill -0 "$PLAYIT_PID" 2>/dev/null; then
         echo "[PLAYIT ERROR] Agent stopped before its tunnels became ready."
         tail -n 50 "$PLAYIT_LOG" || true
@@ -150,36 +164,51 @@ for _ in $(seq 1 30); do
         exit 1
     fi
 
-    MC_ENDPOINT="$(mapping_endpoint 25565)"
-    VOICE_ENDPOINT="$(mapping_endpoint 24454)"
-    if [ -n "$MC_ENDPOINT" ] && [ -n "$VOICE_ENDPOINT" ]; then
+    PLAIN_LOG="$(plain_playit_log)"
+    if grep -Fq "agent registered" <<< "$PLAIN_LOG"; then
+        AGENT_REGISTERED=true
+    fi
+    if grep -Eq '(agent has|tunnel running,)[[:space:]]+[2-9][0-9]*[[:space:]]+tunnels?' <<< "$PLAIN_LOG"; then
+        TUNNELS_REGISTERED=true
+    fi
+    if grep -Fq "udp session details received" <<< "$PLAIN_LOG"; then
+        UDP_SESSION_READY=true
+    fi
+    if [ "$AGENT_REGISTERED" = "true" ] \
+        && [ "$TUNNELS_REGISTERED" = "true" ] \
+        && [ "$UDP_SESSION_READY" = "true" ]; then
         break
     fi
     sleep 3
 done
 
-if [ -z "$MC_ENDPOINT" ] || [ -z "$VOICE_ENDPOINT" ]; then
-    echo "[PLAYIT ERROR] Required mappings were not observed within 90 seconds."
-    echo "[PLAYIT ERROR] Minecraft='$MC_ENDPOINT' Voice='$VOICE_ENDPOINT'"
+if [ "$AGENT_REGISTERED" != "true" ] \
+    || [ "$TUNNELS_REGISTERED" != "true" ] \
+    || [ "$UDP_SESSION_READY" != "true" ]; then
+    echo "[PLAYIT ERROR] Agent readiness was not confirmed within 60 seconds."
+    echo "[PLAYIT ERROR] registered=$AGENT_REGISTERED tunnels=$TUNNELS_REGISTERED udp=$UDP_SESSION_READY"
     tail -n 80 "$PLAYIT_LOG" || true
     printf '%s\n' "FAIL" > "$DIAG_DIR/status_playit_agent.txt"
-    [ -n "$MC_ENDPOINT" ] && printf '%s\n' "PASS" > "$DIAG_DIR/status_minecraft_tunnel.txt" \
-        || printf '%s\n' "FAIL" > "$DIAG_DIR/status_minecraft_tunnel.txt"
-    [ -n "$VOICE_ENDPOINT" ] && printf '%s\n' "PASS" > "$DIAG_DIR/status_voice_tunnel.txt" \
-        || printf '%s\n' "FAIL" > "$DIAG_DIR/status_voice_tunnel.txt"
-    exit 1
-fi
-
-if ! is_public_endpoint "$VOICE_ENDPOINT"; then
-    echo "[PLAYIT ERROR] Refusing invalid voice endpoint: $VOICE_ENDPOINT"
+    printf '%s\n' "FAIL" > "$DIAG_DIR/status_minecraft_tunnel.txt"
     printf '%s\n' "FAIL" > "$DIAG_DIR/status_voice_tunnel.txt"
     exit 1
 fi
 
-if [ -n "${VOICECHAT_PUBLIC_HOST:-}" ] && [ "$VOICECHAT_PUBLIC_HOST" != "$VOICE_ENDPOINT" ]; then
-    echo "[PLAYIT ERROR] VOICECHAT_PUBLIC_HOST does not match the active Playit UDP endpoint."
-    echo "[PLAYIT ERROR] Configured='$VOICECHAT_PUBLIC_HOST' Active='$VOICE_ENDPOINT'"
-    printf '%s\n' "FAIL" > "$DIAG_DIR/status_svc_config.txt"
+MC_ENDPOINT="$MINECRAFT_PUBLIC_HOST"
+VOICE_ENDPOINT="$VOICECHAT_PUBLIC_HOST"
+LOG_MC_ENDPOINT="$(mapping_endpoint 25565)"
+LOG_VOICE_ENDPOINT="$(mapping_endpoint 24454)"
+
+if [ -n "$LOG_MC_ENDPOINT" ] && [ "$LOG_MC_ENDPOINT" != "$MC_ENDPOINT" ]; then
+    echo "[PLAYIT ERROR] MINECRAFT_PUBLIC_HOST differs from the mapping reported by Playit."
+    echo "[PLAYIT ERROR] Configured='$MC_ENDPOINT' Reported='$LOG_MC_ENDPOINT'"
+    printf '%s\n' "FAIL" > "$DIAG_DIR/status_minecraft_tunnel.txt"
+    exit 1
+fi
+if [ -n "$LOG_VOICE_ENDPOINT" ] && [ "$LOG_VOICE_ENDPOINT" != "$VOICE_ENDPOINT" ]; then
+    echo "[PLAYIT ERROR] VOICECHAT_PUBLIC_HOST differs from the mapping reported by Playit."
+    echo "[PLAYIT ERROR] Configured='$VOICE_ENDPOINT' Reported='$LOG_VOICE_ENDPOINT'"
+    printf '%s\n' "FAIL" > "$DIAG_DIR/status_voice_tunnel.txt"
     exit 1
 fi
 
@@ -202,6 +231,7 @@ printf '%s\n' "PASS" > "$DIAG_DIR/status_minecraft_tunnel.txt"
 printf '%s\n' "PASS" > "$DIAG_DIR/status_voice_tunnel.txt"
 printf '%s\n' "PASS" > "$DIAG_DIR/status_svc_config.txt"
 
-echo "[PLAYIT SUCCESS] Minecraft TCP: $MC_ENDPOINT => 127.0.0.1:25565"
-echo "[PLAYIT SUCCESS] Voice UDP:     $VOICE_ENDPOINT => 127.0.0.1:24454"
+echo "[PLAYIT SUCCESS] Agent registered with two tunnels and an authenticated UDP session."
+echo "[PLAYIT SUCCESS] Minecraft TCP endpoint: $MC_ENDPOINT"
+echo "[PLAYIT SUCCESS] Voice UDP endpoint:     $VOICE_ENDPOINT"
 echo "[SVC SUCCESS] voice_host=$VOICE_ENDPOINT | bind_address=* | port=24454/udp"
