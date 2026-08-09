@@ -11,6 +11,8 @@ readonly LOG_DIR="logs"
 readonly DIAG_DIR="session_diagnostics"
 readonly SERVER_LOG="$LOG_DIR/latest.log"
 readonly FIFO_PATH="server_stdin.fifo"
+readonly NEXUS_DATAPACK_SOURCE="src/datapacks/nexus_progression"
+readonly NEXUS_DATAPACK_TARGET="world/datapacks/nexus_progression"
 
 mkdir -p "$LOG_DIR" "$DIAG_DIR"
 printf '%s\n' "STARTING" > "$DIAG_DIR/status_server.txt"
@@ -179,6 +181,18 @@ else
     set_forge_boolean_false "$FORGE_SERVER_CONFIG" "removeErroringEntities"
     set_forge_boolean_false "$FORGE_SERVER_CONFIG" "removeErroringBlockEntities"
 fi
+
+# Install the repository-owned datapack after restoring the world. World packs
+# override mod-provided data, allowing NEXUS to repair malformed third-party
+# loot tables without modifying or redistributing their JARs.
+if [ ! -f "$NEXUS_DATAPACK_SOURCE/pack.mcmeta" ]; then
+    echo "[DATAPACK ERROR] Missing $NEXUS_DATAPACK_SOURCE/pack.mcmeta."
+    exit 1
+fi
+mkdir -p "$(dirname "$NEXUS_DATAPACK_TARGET")"
+rm -rf "$NEXUS_DATAPACK_TARGET"
+cp -a "$NEXUS_DATAPACK_SOURCE" "$NEXUS_DATAPACK_TARGET"
+echo "[DATAPACK PASS] Installed file/nexus_progression into the restored world."
 
 # The signed/checksummed bundle is the only source of runtime mods. Downloading
 # jars during every boot made deployments non-reproducible and bypassed review.

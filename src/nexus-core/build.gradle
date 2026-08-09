@@ -43,9 +43,13 @@ minecraft {
 
 sourceSets.main.resources {
     srcDir 'src/generated/resources'
-    // Package the canonical NEXUS datapack as mod data so it is enabled for
-    // restored worlds as well as newly created worlds.
-    srcDir '../datapacks/nexus_progression'
+}
+
+// Also embed the canonical data files in nexus-core. The launcher installs the
+// same source as a world datapack, which gives compatibility overrides priority
+// over the broken resources shipped by third-party mods.
+processResources {
+    from('../datapacks/nexus_progression/data') { into 'data' }
 }
 
 repositories {
