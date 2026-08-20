@@ -152,6 +152,7 @@ jobs:
           bash scripts/nexus/restore-world.sh
 
       - name: ETAPA 8, 9, 10, 11 & 13 - Ejecutar Servidor NEXUS y Mantener Sesión
+        id: nexus_session
         run: |
           bash scripts/nexus/start-server.sh "$NEXUS_OPERATION"
 
@@ -168,11 +169,29 @@ jobs:
           mkdir -p session_diagnostics
           bash scripts/nexus/backup-world.sh
 
+      # Solo se promociona el mundo si la sesión terminó bien.
+      #
+      # Con `if: always()` a secas, una sesión que falla igualmente subía su
+      # mundo y lo promovía a `current-manifest.json`. Eso ocurrió el
+      # 2026-08-20 (run 32321923636): un cambio de versión de Cataclysm dejó
+      # huérfanas entradas del registro, Forge las descartó al cargar
+      # ("Unidentified mapping from registry"), el log audit abortó la sesión
+      # con razón — y aun así el mundo ya degradado se promovió como actual.
+      # Hubo que revertir el puntero a mano al snapshot anterior.
+      #
+      # El snapshot de la ETAPA 17 se sigue generando siempre; lo que se
+      # condiciona es publicarlo y apuntar `current` a él.
       - name: ETAPA 18 & 19 - Subir Backup a NEXUS STORAGE y Verificar
-        if: always()
+        if: always() && steps.nexus_session.outcome == 'success'
         run: |
           bash scripts/nexus/upload-world.sh
 
+      - name: ETAPA 18.1 - Aviso si no se promociona el mundo
+        if: always() && steps.nexus_session.outcome != 'success'
+        run: |
+          echo "::warning::La sesión no terminó correctamente; el mundo NO se promociona."
+          echo "::warning::'current-manifest.json' sigue apuntando al último snapshot bueno."
+          printf '%s\n' "SKIPPED" > session_diagnostics/status_upload_sha.txt || true
       - name: ETAPA 12 - Publicar Step Summary en GitHub Actions
         if: always()
         run: |
